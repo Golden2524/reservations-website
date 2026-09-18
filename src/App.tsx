@@ -4,6 +4,7 @@ import {
   Heart, MapPin, Menu, Minus, Plus, Search, ShieldCheck, Sparkles,
   Users, X, Zap,
 } from 'lucide-react'
+import Dashboard, { type DashboardRole } from './Dashboard'
 
 type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string }
 
@@ -21,6 +22,7 @@ export default function App() {
   const [selectedSpace, setSelectedSpace] = useState<Space | null>(null)
   const [saved, setSaved] = useState<string[]>([])
   const [menuOpen, setMenuOpen] = useState(false)
+  const [activeRole, setActiveRole] = useState<DashboardRole>('guest')
   const availability = useMemo(() => 34 - selectedDate * 3, [selectedDate])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
@@ -70,6 +72,8 @@ export default function App() {
       <section id="how" className="how"><div className="shell how-inner"><div className="how-copy"><p className="kicker">SIMPLE BY DESIGN</p><h2>Good plans<br />start <em>here.</em></h2><p>Every detail is designed to remove friction, so you can get on with making the most of your time.</p><a href="#explore" className="text-link">Discover the experience <ArrowRight size={18}/></a></div><div className="steps"><div><span>01</span><h3>Find your fit</h3><p>Search a trusted collection of spaces and services that feel just right.</p></div><div><span>02</span><h3>Book in seconds</h3><p>See live availability, choose your time, and confirm without the back-and-forth.</p></div><div><span>03</span><h3>Show up present</h3><p>Everything is in one calm place — from access details to useful reminders.</p></div></div></div></section>
 
       <section id="partners" className="partner shell"><div className="partner-art"><img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1000&q=85" alt="Team collaborating at a table" /><div className="partner-tag"><Compass size={18}/><span>One platform.<br/><strong>Endless potential.</strong></span></div></div><div className="partner-copy"><p className="kicker">FOR SPACE MAKERS</p><h2>Your craft<br />deserves <em>better tools.</em></h2><p>From boutique hosts to ambitious teams, ReserveFlow gives you a refined way to manage availability, welcome guests, and grow on your terms.</p><button className="dark-button">Become a partner <ArrowRight size={18}/></button></div></section>
+
+      <section id="platform" className="platform"><div className="shell"><div className="platform-heading"><div><p className="kicker">THE OPERATING SYSTEM FOR RESERVATIONS</p><h2>One platform.<br/><em>Every perspective.</em></h2></div><p>See how ReserveFlow gives every participant the right information and controls at exactly the right moment.</p></div><div className="role-tabs" role="tablist" aria-label="Dashboard demo roles">{([['guest', 'Guest'], ['partner', 'Partner'], ['admin', 'Admin']] as const).map(([value, label]) => <button key={value} className={activeRole === value ? 'active' : ''} onClick={() => setActiveRole(value)} role="tab" aria-selected={activeRole === value}>{label}</button>)}</div><Dashboard role={activeRole} /></div></section>
 
       <footer><div className="shell footer-inner"><a className="brand" href="#top"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a><p>Make space for what matters.</p><span>© 2026 ReserveFlow</span></div></footer>
 
