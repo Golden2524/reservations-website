@@ -2,12 +2,13 @@ import { useMemo, useState } from 'react'
 import {
   ArrowRight, Bell, CalendarDays, Check, ChevronDown, Clock3, Compass,
   Heart, MapPin, Menu, Minus, Plus, Search, ShieldCheck, Sparkles,
-  Users, X, Zap,
+  Users, Zap,
 } from 'lucide-react'
 import Dashboard, { type DashboardRole } from './Dashboard'
 import Marketplace from './Marketplace'
+import Checkout from './Checkout'
 
-type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string }
+export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string }
 
 const spaces: Space[] = [
   { name: 'The Glasshouse', kind: 'Boutique stay', place: 'Victoria Island, Lagos', price: 84000, image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85', status: 'Only 2 suites left', seats: '2 guests' },
@@ -80,7 +81,7 @@ export default function App() {
 
       <footer><div className="shell footer-inner"><a className="brand" href="#top"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a><p>Make space for what matters.</p><span>© 2026 ReserveFlow</span></div></footer>
 
-      {selectedSpace && <div className="modal-backdrop" onMouseDown={() => setSelectedSpace(null)}><aside className="booking-modal" onMouseDown={(event) => event.stopPropagation()}><button className="close-button" onClick={() => setSelectedSpace(null)}><X size={20}/></button><img src={selectedSpace.image} alt="" /><div className="modal-content"><p className="kicker">YOUR RESERVATION</p><h2>{selectedSpace.name}</h2><p className="modal-place"><MapPin size={16}/>{selectedSpace.place}</p><div className="reservation-row"><CalendarDays size={18}/><span><small>Arrival</small><strong>{dates[selectedDate]}, 14 October</strong></span><Clock3 size={18}/><span><small>Time</small><strong>10:30 AM</strong></span></div><div className="modal-total"><span>Estimated total</span><strong>₦{selectedSpace.price.toLocaleString()}</strong></div><button className="confirm-button" onClick={() => setSelectedSpace(null)}><Check size={18}/> Reserve this space</button><p className="secure-note"><ShieldCheck size={14}/> Secure checkout · Free cancellation within 24 hours</p></div></aside></div>}
+      {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} selectedDate={dates[selectedDate]} onClose={() => setSelectedSpace(null)} />}
     </main>
   )
 }
