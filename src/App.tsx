@@ -7,6 +7,7 @@ import {
 import Dashboard, { type DashboardRole } from './Dashboard'
 import Marketplace from './Marketplace'
 import Checkout from './Checkout'
+import ReservationsHub from './ReservationsHub'
 
 export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string }
 
@@ -72,6 +73,8 @@ export default function App() {
       </section>
 
       <Marketplace onReserve={(listing) => setSelectedSpace({ name: listing.name, kind: listing.type, place: `${listing.location}, Lagos`, price: listing.price, image: listing.image, status: listing.availability, seats: listing.perks[1] })} />
+
+      <ReservationsHub />
 
       <section id="how" className="how"><div className="shell how-inner"><div className="how-copy"><p className="kicker">SIMPLE BY DESIGN</p><h2>Good plans<br />start <em>here.</em></h2><p>Every detail is designed to remove friction, so you can get on with making the most of your time.</p><a href="#explore" className="text-link">Discover the experience <ArrowRight size={18}/></a></div><div className="steps"><div><span>01</span><h3>Find your fit</h3><p>Search a trusted collection of spaces and services that feel just right.</p></div><div><span>02</span><h3>Book in seconds</h3><p>See live availability, choose your time, and confirm without the back-and-forth.</p></div><div><span>03</span><h3>Show up present</h3><p>Everything is in one calm place — from access details to useful reminders.</p></div></div></div></section>
 
