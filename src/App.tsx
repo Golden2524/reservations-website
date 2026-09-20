@@ -26,6 +26,7 @@ export default function App() {
   const [saved, setSaved] = useState<string[]>([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeRole, setActiveRole] = useState<DashboardRole>('guest')
+  const [notice, setNotice] = useState('')
   const availability = useMemo(() => 34 - selectedDate * 3, [selectedDate])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
@@ -35,9 +36,9 @@ export default function App() {
       <nav className="nav shell">
         <a className="brand" href="#top" aria-label="ReserveFlow home"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a>
         <div className={menuOpen ? 'nav-links open' : 'nav-links'}>
-          <a href="#explore">Explore</a><a href="#partners">For partners</a><a href="#how">How it works</a>
+          <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => setMenuOpen(false)}>For partners</a><a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
         </div>
-        <div className="nav-actions"><button className="icon-button"><Bell size={18} /></button><button className="avatar">AM</button><button className="menu-button" onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
+        <div className="nav-actions"><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label="Open Amara’s account">AM</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
       </nav>
 
       <section id="top" className="hero shell">
@@ -66,7 +67,7 @@ export default function App() {
         <div className="date-strip"><button className="date-arrow">‹</button>{dates.map((date, index) => <button key={date} onClick={() => setSelectedDate(index)} className={selectedDate === index ? 'date active' : 'date'}>{date}</button>)}<button className="date-arrow">›</button></div>
         <div className="space-grid">
           {spaces.map((space) => <article className="space-card" key={space.name}>
-            <div className="space-image"><img src={space.image} alt={space.name} /><span className="pill">{space.kind}</span><button className={saved.includes(space.name) ? 'save saved' : 'save'} onClick={() => toggleSaved(space.name)}><Heart size={18} fill={saved.includes(space.name) ? 'currentColor' : 'none'} /></button><div className="image-status"><span className="live-dot"/>{space.status}</div></div>
+            <div className="space-image"><img src={space.image} alt={space.name} /><span className="pill">{space.kind}</span><button aria-label={`${saved.includes(space.name) ? 'Remove' : 'Save'} ${space.name}`} className={saved.includes(space.name) ? 'save saved' : 'save'} onClick={() => { toggleSaved(space.name); setNotice(saved.includes(space.name) ? `${space.name} removed from saved spaces.` : `${space.name} saved for later.`) }}><Heart size={18} fill={saved.includes(space.name) ? 'currentColor' : 'none'} /></button><div className="image-status"><span className="live-dot"/>{space.status}</div></div>
             <div className="space-info"><p>{space.place}</p><h3>{space.name}</h3><div className="space-bottom"><span><strong>₦{space.price.toLocaleString()}</strong> <small>/ {space.kind === 'Boutique stay' ? 'night' : 'session'}</small></span><button onClick={() => setSelectedSpace(space)}>Book now <ArrowRight size={16}/></button></div></div>
           </article>)}
         </div>
@@ -84,6 +85,7 @@ export default function App() {
 
       <footer><div className="shell footer-inner"><a className="brand" href="#top"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a><p>Make space for what matters.</p><span>© 2026 ReserveFlow</span></div></footer>
 
+      {notice && <div className="app-notice" role="status"><Check size={15}/>{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}>×</button></div>}
       {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} selectedDate={dates[selectedDate]} onClose={() => setSelectedSpace(null)} />}
     </main>
   )
