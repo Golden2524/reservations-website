@@ -26,6 +26,8 @@ The frontend uses mocked data intentionally until the API contract, authenticati
 
 The API lives in `api/` and is deliberately organised for the upcoming accommodation modules: identity and roles, host properties, room inventory, availability, reservations, payments, notifications, and administration.
 
+The first PostgreSQL migration is at `api/db/migrations/0001_initial_accommodation_schema.sql`. Its range exclusion constraint prevents overlapping active reservations for the same unit, including concurrent checkout attempts. It also stores idempotency keys for booking requests and payment webhooks.
+
 ```bash
 cd api
 npm install
