@@ -1,12 +1,15 @@
 {
-  "name": "reserveflow-frontend",
+  "name": "reserveflow",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "api:dev": "npm --prefix api run dev",
+    "api:build": "npm --prefix api run build",
+    "api:start": "npm --prefix api run start"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

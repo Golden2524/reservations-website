@@ -1,6 +1,6 @@
 # ReserveFlow
 
-ReserveFlow is a multi-vendor reservation platform frontend for boutique stays, workspaces, and healthcare appointments. This first milestone is an interactive static product demo, designed to deploy directly to GitHub Pages.
+ReserveFlow is a Kuje-first multi-vendor accommodation marketplace for short-let apartments, guest houses, boutique stays, and serviced apartments. The frontend is live as an interactive product demo, while the API is being built as a production-grade booking platform.
 
 ## Current frontend experience
 
@@ -13,7 +13,7 @@ ReserveFlow is a multi-vendor reservation platform frontend for boutique stays, 
 ## Planned production architecture
 
 ```text
-React client  →  NestJS API  →  PostgreSQL (constraints + transactions)
+React client  →  Express + TypeScript API  →  PostgreSQL (constraints + transactions)
                     │                  │
                     ├── Redis (locks, rate limits, queues)
                     ├── Socket.io (live availability)
@@ -21,6 +21,19 @@ React client  →  NestJS API  →  PostgreSQL (constraints + transactions)
 ```
 
 The frontend uses mocked data intentionally until the API contract, authentication model, reservation state machine, and database constraints are designed in the backend phase.
+
+## Backend foundation
+
+The API lives in `api/` and is deliberately organised for the upcoming accommodation modules: identity and roles, host properties, room inventory, availability, reservations, payments, notifications, and administration.
+
+```bash
+cd api
+npm install
+Copy-Item .env.example .env
+npm run dev
+```
+
+Once running, `GET /api/v1/health` confirms the service is available. Database, Redis, payment, and authentication integrations are added in the next backend milestones so no real booking data is accepted before it is safely persisted.
 
 ## Run locally
 
