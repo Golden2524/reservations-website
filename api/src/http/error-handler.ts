@@ -4,6 +4,11 @@ import { ZodError } from 'zod';
 import { ApiError } from '../errors/api-error.js';
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
+  if (typeof error === 'object' && error !== null && 'type' in error && error.type === 'entity.parse.failed') {
+    response.status(400).json({ error: 'Request body must be valid JSON.', code: 'MALFORMED_JSON' });
+    return;
+  }
+
   if (error instanceof ZodError) {
     response.status(422).json({
       error: 'Validation failed',

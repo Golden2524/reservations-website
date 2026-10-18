@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
+import { requireAuth } from '../../auth/require-auth.js';
 import { createDatabaseClient } from '../../db/client.js';
 import { ApiError } from '../../errors/api-error.js';
 import { asyncRoute } from '../../http/async-route.js';
 
 const createReservationSchema = z.object({
   unitId: z.string().uuid(),
-  guestId: z.string().uuid(),
   checkIn: z.coerce.date(),
   checkOut: z.coerce.date(),
   guestCount: z.coerce.number().int().min(1).max(20),
@@ -19,10 +19,7 @@ const publicReference = () => `RF-${randomUUID().replaceAll('-', '').slice(0, 10
 
 export const reservationsRouter = Router();
 
-// This endpoint is intentionally limited to trusted clients until the identity
-// middleware is added. The next authentication milestone will derive guestId
-// from the verified access token instead of accepting it in a request body.
-reservationsRouter.post('/', asyncRoute(async (request, response) => {
+reservationsRouter.post('/', requireAuth, asyncRoute(async (request, response) => {
   const input = createReservationSchema.parse(request.body);
   if (input.checkIn >= input.checkOut) {
     throw new ApiError(422, 'checkOut must be after checkIn', 'INVALID_STAY_RANGE');
@@ -73,7 +70,7 @@ reservationsRouter.post('/', asyncRoute(async (request, response) => {
         $7, $8, $9, $10, $11)
       RETURNING id, public_reference, status, check_in, check_out, total_naira, hold_expires_at`,
       [
-        publicReference(), input.unitId, input.guestId, isoDate(input.checkIn), isoDate(input.checkOut),
+        publicReference(), input.unitId, request.auth!.userId, isoDate(input.checkIn), isoDate(input.checkOut),
         input.guestCount, nightlyRate, cleaningFee, serviceFee, total, input.idempotencyKey,
       ],
     );

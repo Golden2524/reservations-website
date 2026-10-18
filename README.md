@@ -58,7 +58,11 @@ npm run db:verify-booking-safety
 
 The initial public discovery endpoints are now available at `/api/v1/properties` and `/api/v1/properties/:slug/availability`. They accept validated date and guest-count queries and read availability from PostgreSQL rather than the frontend mock state.
 
-`POST /api/v1/reservations` creates a 15-minute inventory hold and is idempotent. It is deliberately restricted to trusted development clients until the next milestone adds authentication and derives the guest identity from the access token. The PostgreSQL exclusion constraint remains the final guard against double booking.
+`POST /api/v1/reservations` creates a 15-minute inventory hold and is idempotent. It requires a verified bearer token and derives the guest identity from that token; it never trusts a guest ID in the booking request. The PostgreSQL exclusion constraint remains the final guard against double booking.
+
+### Authentication
+
+`POST /api/v1/auth/register` creates a guest account with a bcrypt password hash. `POST /api/v1/auth/login` returns a signed, 15-minute bearer access token. Public registration cannot create host or admin roles; hosts are onboarded through a reviewed business process and administrators are provisioned separately.
 
 ## Run locally
 
