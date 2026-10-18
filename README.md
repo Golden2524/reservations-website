@@ -64,6 +64,12 @@ The initial public discovery endpoints are now available at `/api/v1/properties`
 
 `POST /api/v1/auth/register` creates a guest account with a bcrypt password hash. `POST /api/v1/auth/login` returns a signed, 15-minute bearer access token. Public registration cannot create host or admin roles; hosts are onboarded through a reviewed business process and administrators are provisioned separately.
 
+### Host supply workflow
+
+Prospective accommodation vendors submit `POST /api/v1/host-applications`; this does **not** grant host access. After an approved onboarding review creates a verified host profile, the protected `/api/v1/host/properties` routes allow that host to create draft properties, add bookable units with naira pricing, and set blackout dates. Properties stay `DRAFT` until administrative quality and safety review activates them for public discovery.
+
+Administrators use `/api/v1/admin/host-applications` to list, approve, or reject vendor applications. Approval atomically upgrades the reviewed applicant to `HOST` and creates a verified host profile. Availability blocks are checked by both public discovery and reservation creation, and unit row locks serialize a host blackout update against a simultaneous hold request.
+
 ## Run locally
 
 ```bash

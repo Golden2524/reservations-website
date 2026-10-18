@@ -48,12 +48,23 @@ reservationsRouter.post('/', requireAuth, asyncRoute(async (request, response) =
       `SELECT u.max_guests, u.base_nightly_rate_naira, u.cleaning_fee_naira
        FROM units u JOIN properties p ON p.id = u.property_id
        WHERE u.id = $1 AND u.status = 'ACTIVE' AND p.status = 'ACTIVE'
-       FOR SHARE`,
+       FOR UPDATE`,
       [input.unitId],
     );
     if (!unit.rowCount) throw new ApiError(404, 'Bookable unit not found', 'UNIT_NOT_FOUND');
     if (input.guestCount > unit.rows[0].max_guests) {
       throw new ApiError(422, 'Guest count exceeds this unit capacity', 'GUEST_CAPACITY_EXCEEDED');
+    }
+
+    const blocked = await client.query(
+      `SELECT 1 FROM availability_blocks
+       WHERE unit_id = $1
+         AND daterange(starts_on, ends_on, '[)') && daterange($2::date, $3::date, '[)')
+       LIMIT 1`,
+      [input.unitId, isoDate(input.checkIn), isoDate(input.checkOut)],
+    );
+    if (blocked.rowCount) {
+      throw new ApiError(409, 'This accommodation is unavailable for those dates.', 'UNIT_UNAVAILABLE');
     }
 
     const nights = Math.round((input.checkOut.getTime() - input.checkIn.getTime()) / 86_400_000);

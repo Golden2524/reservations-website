@@ -50,6 +50,13 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
               AND r.stay && daterange($3::date, $4::date, '[)')
           )
         )
+        AND (
+          $3::date IS NULL OR NOT EXISTS (
+            SELECT 1 FROM availability_blocks b
+            WHERE b.unit_id = u.id
+              AND daterange(b.starts_on, b.ends_on, '[)') && daterange($3::date, $4::date, '[)')
+          )
+        )
       GROUP BY p.id
       ORDER BY from_nightly_rate_naira ASC, p.created_at DESC
       LIMIT $5`,
@@ -91,6 +98,11 @@ propertiesRouter.get('/:slug/availability', asyncRoute(async (request, response)
           WHERE r.unit_id = u.id
             AND r.status IN ('HOLD', 'PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN')
             AND r.stay && daterange($3::date, $4::date, '[)')
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM availability_blocks b
+          WHERE b.unit_id = u.id
+            AND daterange(b.starts_on, b.ends_on, '[)') && daterange($3::date, $4::date, '[)')
         )
       ORDER BY u.base_nightly_rate_naira ASC`,
       [request.params.slug, query.guests, isoDate(query.checkIn), isoDate(query.checkOut)],
