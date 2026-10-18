@@ -37,6 +37,23 @@ npm run dev
 
 Once running, `GET /api/v1/health` confirms the service is available. Database, Redis, payment, and authentication integrations are added in the next backend milestones so no real booking data is accepted before it is safely persisted.
 
+### Database migrations
+
+After adding the Neon `DATABASE_URL` to `api/.env`, apply the versioned PostgreSQL schema with:
+
+```bash
+cd api
+npm run db:migrate
+```
+
+The migration runner stores a checksum for every applied migration and stops if an already-applied migration is modified.
+
+To validate the double-booking protection against the live database without preserving test data:
+
+```bash
+npm run db:verify-booking-safety
+```
+
 ## Run locally
 
 ```bash
