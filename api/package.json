@@ -11,7 +11,8 @@
     "test:domain": "tsx src/domain/reservation.test.ts",
     "test:auth": "tsx src/auth/tokens.test.ts",
     "db:migrate": "tsx src/scripts/migrate.ts",
-    "db:verify-booking-safety": "tsx src/scripts/verify-booking-constraint.ts"
+    "db:verify-booking-safety": "tsx src/scripts/verify-booking-constraint.ts",
+    "payments:smoke-test": "tsx src/scripts/paystack-sandbox-smoke.ts"
   },
   "dependencies": {
     "@prisma/client": "^7.10.0",

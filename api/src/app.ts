@@ -12,7 +12,7 @@ export const app = express();
 app.disable('x-powered-by');
 app.use(helmet());
 app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
-app.use(pinoHttp());
+app.use(pinoHttp({ redact: ['req.headers.authorization', 'req.headers.cookie'] }));
 app.use('/api/v1/payments/paystack/webhook', express.raw({ type: 'application/json', limit: '1mb' }), paystackWebhookRouter);
 app.use(express.json({ limit: '1mb' }));
 app.use('/api/v1', apiRouter);

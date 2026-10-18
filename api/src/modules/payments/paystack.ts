@@ -54,7 +54,11 @@ export const initializePaystackTransaction = async (input: InitializePayment): P
 
   const payload: unknown = await response.json().catch(() => null);
   if (!response.ok || !payload || typeof payload !== 'object' || !('data' in payload)) {
-    throw new ApiError(502, 'Payment provider could not initialize checkout.', 'PAYMENT_INITIALIZATION_FAILED');
+    const providerMessage = payload && typeof payload === 'object' && 'message' in payload
+      && typeof payload.message === 'string'
+      ? payload.message
+      : 'Payment provider could not initialize checkout.';
+    throw new ApiError(502, providerMessage, 'PAYMENT_INITIALIZATION_FAILED');
   }
   const data = (payload as { data: Record<string, unknown> }).data;
   if (

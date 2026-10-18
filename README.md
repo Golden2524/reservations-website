@@ -80,6 +80,8 @@ Every approval and suspension is recorded in `property_review_events`, preservin
 
 `POST /api/v1/payments/paystack/webhook` receives raw Paystack events, validates their HMAC-SHA512 signature, records each provider event once, and confirms the reservation after `charge.success`. Add `PAYSTACK_SECRET_KEY` and an HTTPS `PAYSTACK_CALLBACK_URL` only when you are ready to test checkout; never expose the secret key in the frontend or commit it.
 
+With a test key only, `npm run payments:smoke-test` initializes one sandbox checkout without opening or paying it, then removes the temporary Neon users, property, unit, reservation, and payment records.
+
 ## Run locally
 
 ```bash
