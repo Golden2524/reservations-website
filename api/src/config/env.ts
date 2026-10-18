@@ -9,6 +9,8 @@ const envSchema = z.object({
   REDIS_URL: z.string().url().optional(),
   JWT_ACCESS_SECRET: z.string().min(32).optional(),
   PAYMENT_WEBHOOK_SECRET: z.string().min(1).optional(),
+  PAYSTACK_SECRET_KEY: z.string().min(1).optional(),
+  PAYSTACK_CALLBACK_URL: z.string().url().optional(),
 });
 
 export const env = envSchema.parse(process.env);

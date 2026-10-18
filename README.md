@@ -74,6 +74,12 @@ Hosts submit a draft property through `POST /api/v1/host/properties/:propertyId/
 
 Every approval and suspension is recorded in `property_review_events`, preserving the reviewer and decision note for operational auditability.
 
+### Payments
+
+`POST /api/v1/payments/checkout` starts a Paystack payment for the signed-in guest's unexpired reservation hold. Charges are calculated only on the server and sent to Paystack in kobo. The endpoint has an idempotency key, so retries reuse the same payment record and provider reference rather than creating a second charge attempt.
+
+`POST /api/v1/payments/paystack/webhook` receives raw Paystack events, validates their HMAC-SHA512 signature, records each provider event once, and confirms the reservation after `charge.success`. Add `PAYSTACK_SECRET_KEY` and an HTTPS `PAYSTACK_CALLBACK_URL` only when you are ready to test checkout; never expose the secret key in the frontend or commit it.
+
 ## Run locally
 
 ```bash

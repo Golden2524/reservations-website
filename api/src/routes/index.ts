@@ -4,6 +4,7 @@ import { adminRouter } from '../modules/admin/admin.router.js';
 import { hostApplicationsRouter } from '../modules/hosts/host-applications.router.js';
 import { hostPropertiesRouter } from '../modules/hosts/host-properties.router.js';
 import { propertiesRouter } from '../modules/properties/properties.router.js';
+import { paymentsRouter } from '../modules/payments/payments.router.js';
 import { reservationsRouter } from '../modules/reservations/reservations.router.js';
 import { healthRouter } from './health.js';
 
@@ -15,4 +16,5 @@ apiRouter.use('/admin', adminRouter);
 apiRouter.use('/host-applications', hostApplicationsRouter);
 apiRouter.use('/host/properties', hostPropertiesRouter);
 apiRouter.use('/properties', propertiesRouter);
+apiRouter.use('/payments', paymentsRouter);
 apiRouter.use('/reservations', reservationsRouter);
