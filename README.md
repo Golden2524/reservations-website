@@ -70,6 +70,10 @@ Prospective accommodation vendors submit `POST /api/v1/host-applications`; this 
 
 Administrators use `/api/v1/admin/host-applications` to list, approve, or reject vendor applications. Approval atomically upgrades the reviewed applicant to `HOST` and creates a verified host profile. Availability blocks are checked by both public discovery and reservation creation, and unit row locks serialize a host blackout update against a simultaneous hold request.
 
+Hosts submit a draft property through `POST /api/v1/host/properties/:propertyId/submit`; only an administrator can activate it through the property-review API. Guests can retrieve only their own stays at `GET /api/v1/reservations/mine` and cancel eligible holds, unpaid reservations, or confirmed stays with an immutable cancellation event. Payment refunds are deliberately deferred until the payment-provider milestone, so no refund is promised or processed by this API yet.
+
+Every approval and suspension is recorded in `property_review_events`, preserving the reviewer and decision note for operational auditability.
+
 ## Run locally
 
 ```bash

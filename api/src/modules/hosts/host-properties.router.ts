@@ -107,6 +107,33 @@ hostPropertiesRouter.post('/:propertyId/units', asyncRoute(async (request, respo
   }
 }));
 
+hostPropertiesRouter.post('/:propertyId/submit', asyncRoute(async (request, response) => {
+  const propertyId = z.string().uuid().parse(request.params.propertyId);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `UPDATE properties p SET status = 'PENDING_REVIEW', updated_at = now()
+       WHERE p.id = $1
+         AND p.host_id = $2
+         AND p.status = 'DRAFT'
+         AND EXISTS (SELECT 1 FROM units u WHERE u.property_id = p.id AND u.status = 'ACTIVE')
+       RETURNING p.id, p.name, p.slug, p.status, p.updated_at`,
+      [propertyId, request.auth!.userId],
+    );
+    if (!result.rowCount) {
+      throw new ApiError(
+        409,
+        'Only draft properties with at least one active unit can be submitted for review.',
+        'PROPERTY_NOT_READY_FOR_REVIEW',
+      );
+    }
+    response.json({ data: result.rows[0] });
+  } finally {
+    await client.end();
+  }
+}));
+
 hostPropertiesRouter.post('/:propertyId/availability-blocks', asyncRoute(async (request, response) => {
   const input = availabilityBlockSchema.parse(request.body);
   const propertyId = z.string().uuid().parse(request.params.propertyId);

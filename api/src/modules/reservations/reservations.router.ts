@@ -19,7 +19,66 @@ const publicReference = () => `RF-${randomUUID().replaceAll('-', '').slice(0, 10
 
 export const reservationsRouter = Router();
 
-reservationsRouter.post('/', requireAuth, asyncRoute(async (request, response) => {
+reservationsRouter.use(requireAuth);
+
+reservationsRouter.get('/mine', asyncRoute(async (request, response) => {
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT r.id, r.public_reference, r.check_in, r.check_out, r.guest_count, r.status,
+        r.total_naira, r.hold_expires_at, r.cancelled_at, r.cancellation_reason, r.created_at,
+        u.name AS unit_name, p.name AS property_name, p.slug AS property_slug, p.area, p.city
+       FROM reservations r
+       JOIN units u ON u.id = r.unit_id
+       JOIN properties p ON p.id = u.property_id
+       WHERE r.guest_id = $1
+       ORDER BY r.created_at DESC`,
+      [request.auth!.userId],
+    );
+    response.json({ data: result.rows });
+  } finally {
+    await client.end();
+  }
+}));
+
+const cancelReservationSchema = z.object({
+  reason: z.string().trim().min(3).max(500),
+});
+
+reservationsRouter.post('/:reservationId/cancel', asyncRoute(async (request, response) => {
+  const reservationId = z.string().uuid().parse(request.params.reservationId);
+  const input = cancelReservationSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `UPDATE reservations
+       SET status = 'CANCELLED', cancelled_at = now(), cancellation_reason = $3, updated_at = now()
+       WHERE id = $1 AND guest_id = $2 AND status IN ('HOLD', 'PENDING_PAYMENT', 'CONFIRMED')
+       RETURNING id, public_reference, status, cancelled_at, cancellation_reason`,
+      [reservationId, request.auth!.userId, input.reason],
+    );
+    if (!result.rowCount) {
+      throw new ApiError(409, 'This reservation cannot be cancelled.', 'RESERVATION_NOT_CANCELLABLE');
+    }
+    await client.query(
+      `INSERT INTO reservation_events (reservation_id, actor_id, event_type, metadata)
+       VALUES ($1, $2, 'RESERVATION_CANCELLED_BY_GUEST', jsonb_build_object('reason', $3))`,
+      [reservationId, request.auth!.userId, input.reason],
+    );
+    await client.query('COMMIT');
+    response.json({ data: result.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    await client.end();
+  }
+}));
+
+reservationsRouter.post('/', asyncRoute(async (request, response) => {
   const input = createReservationSchema.parse(request.body);
   if (input.checkIn >= input.checkOut) {
     throw new ApiError(422, 'checkOut must be after checkIn', 'INVALID_STAY_RANGE');

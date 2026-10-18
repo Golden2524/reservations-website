@@ -7,6 +7,7 @@ import { ApiError } from '../../errors/api-error.js';
 import { asyncRoute } from '../../http/async-route.js';
 
 const applicationIdSchema = z.string().uuid();
+const propertyIdSchema = z.string().uuid();
 const reviewSchema = z.object({ reviewNote: z.string().trim().max(2000).optional() });
 
 export const adminRouter = Router();
@@ -82,6 +83,76 @@ adminRouter.post('/host-applications/:applicationId/reject', asyncRoute(async (r
       [applicationId, request.auth!.userId, input.reviewNote ?? null],
     );
     if (!result.rowCount) throw new ApiError(404, 'Host application not found or cannot be rejected.', 'HOST_APPLICATION_NOT_FOUND');
+    response.json({ data: result.rows[0] });
+  } finally {
+    await client.end();
+  }
+}));
+
+adminRouter.get('/properties/review', asyncRoute(async (_request, response) => {
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT p.id, p.name, p.slug, p.description, p.address_line_1, p.area, p.city, p.state,
+        p.status, p.created_at, p.updated_at, h.business_name, u.email AS host_email,
+        COUNT(un.id)::int AS unit_count
+       FROM properties p
+       JOIN host_profiles h ON h.user_id = p.host_id
+       JOIN users u ON u.id = p.host_id
+       LEFT JOIN units un ON un.property_id = p.id AND un.status = 'ACTIVE'
+       WHERE p.status = 'PENDING_REVIEW'
+       GROUP BY p.id, h.business_name, u.email
+       ORDER BY p.updated_at ASC`,
+    );
+    response.json({ data: result.rows });
+  } finally {
+    await client.end();
+  }
+}));
+
+adminRouter.post('/properties/:propertyId/approve', asyncRoute(async (request, response) => {
+  const propertyId = propertyIdSchema.parse(request.params.propertyId);
+  const input = reviewSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `UPDATE properties SET status = 'ACTIVE', updated_at = now()
+       WHERE id = $1 AND status = 'PENDING_REVIEW'
+       RETURNING id, name, slug, status, updated_at`,
+      [propertyId],
+    );
+    if (!result.rowCount) throw new ApiError(404, 'Property is not awaiting approval.', 'PROPERTY_NOT_FOUND_FOR_REVIEW');
+    await client.query(
+      `INSERT INTO property_review_events (property_id, actor_id, action, note)
+       VALUES ($1, $2, 'APPROVED', $3)`,
+      [propertyId, request.auth!.userId, input.reviewNote ?? null],
+    );
+    response.json({ data: result.rows[0] });
+  } finally {
+    await client.end();
+  }
+}));
+
+adminRouter.post('/properties/:propertyId/suspend', asyncRoute(async (request, response) => {
+  const propertyId = propertyIdSchema.parse(request.params.propertyId);
+  const input = reviewSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `UPDATE properties SET status = 'SUSPENDED', updated_at = now()
+       WHERE id = $1 AND status = 'ACTIVE'
+       RETURNING id, name, slug, status, updated_at`,
+      [propertyId],
+    );
+    if (!result.rowCount) throw new ApiError(404, 'Active property not found.', 'PROPERTY_NOT_FOUND_FOR_SUSPENSION');
+    await client.query(
+      `INSERT INTO property_review_events (property_id, actor_id, action, note)
+       VALUES ($1, $2, 'SUSPENDED', $3)`,
+      [propertyId, request.auth!.userId, input.reviewNote ?? null],
+    );
     response.json({ data: result.rows[0] });
   } finally {
     await client.end();
