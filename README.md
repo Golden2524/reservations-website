@@ -82,6 +82,8 @@ Every approval and suspension is recorded in `property_review_events`, preservin
 
 With a test key only, `npm run payments:smoke-test` initializes one sandbox checkout without opening or paying it, then removes the temporary Neon users, property, unit, reservation, and payment records.
 
+Reservation holds and payment attempts each expire after 15 minutes. `npm run reservations:expire` releases stale inventory; reservation creation also clears expired holds for its requested unit before it attempts an insert. When the API is deployed, this command should run on a scheduled worker every minute.
+
 ## Run locally
 
 ```bash

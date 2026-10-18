@@ -12,6 +12,7 @@
     "test:auth": "tsx src/auth/tokens.test.ts",
     "db:migrate": "tsx src/scripts/migrate.ts",
     "db:verify-booking-safety": "tsx src/scripts/verify-booking-constraint.ts",
+    "reservations:expire": "tsx src/scripts/expire-reservations.ts",
     "payments:smoke-test": "tsx src/scripts/paystack-sandbox-smoke.ts"
   },
   "dependencies": {

@@ -5,6 +5,7 @@ import { requireAuth } from '../../auth/require-auth.js';
 import { createDatabaseClient } from '../../db/client.js';
 import { ApiError } from '../../errors/api-error.js';
 import { asyncRoute } from '../../http/async-route.js';
+import { expireReservationsForUnit } from './expire-reservations.js';
 
 const createReservationSchema = z.object({
   unitId: z.string().uuid(),
@@ -27,7 +28,7 @@ reservationsRouter.get('/mine', asyncRoute(async (request, response) => {
   try {
     const result = await client.query(
       `SELECT r.id, r.public_reference, r.check_in, r.check_out, r.guest_count, r.status,
-        r.total_naira, r.hold_expires_at, r.cancelled_at, r.cancellation_reason, r.created_at,
+        r.total_naira, r.hold_expires_at, r.payment_expires_at, r.cancelled_at, r.cancellation_reason, r.created_at,
         u.name AS unit_name, p.name AS property_name, p.slug AS property_slug, p.area, p.city
        FROM reservations r
        JOIN units u ON u.id = r.unit_id
@@ -55,7 +56,8 @@ reservationsRouter.post('/:reservationId/cancel', asyncRoute(async (request, res
     await client.query('BEGIN');
     const result = await client.query(
       `UPDATE reservations
-       SET status = 'CANCELLED', cancelled_at = now(), cancellation_reason = $3, updated_at = now()
+       SET status = 'CANCELLED', cancelled_at = now(), cancellation_reason = $3,
+           hold_expires_at = NULL, payment_expires_at = NULL, updated_at = now()
        WHERE id = $1 AND guest_id = $2 AND status IN ('HOLD', 'PENDING_PAYMENT', 'CONFIRMED')
        RETURNING id, public_reference, status, cancelled_at, cancellation_reason`,
       [reservationId, request.auth!.userId, input.reason],
@@ -111,6 +113,7 @@ reservationsRouter.post('/', asyncRoute(async (request, response) => {
       [input.unitId],
     );
     if (!unit.rowCount) throw new ApiError(404, 'Bookable unit not found', 'UNIT_NOT_FOUND');
+    await expireReservationsForUnit(client, input.unitId);
     if (input.guestCount > unit.rows[0].max_guests) {
       throw new ApiError(422, 'Guest count exceeds this unit capacity', 'GUEST_CAPACITY_EXCEEDED');
     }

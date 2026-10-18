@@ -46,7 +46,11 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
           $3::date IS NULL OR NOT EXISTS (
             SELECT 1 FROM reservations r
             WHERE r.unit_id = u.id
-              AND r.status IN ('HOLD', 'PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN')
+              AND (
+                (r.status = 'HOLD' AND r.hold_expires_at > now())
+                OR (r.status = 'PENDING_PAYMENT' AND r.payment_expires_at > now())
+                OR r.status IN ('CONFIRMED', 'CHECKED_IN')
+              )
               AND r.stay && daterange($3::date, $4::date, '[)')
           )
         )
@@ -96,7 +100,11 @@ propertiesRouter.get('/:slug/availability', asyncRoute(async (request, response)
         AND NOT EXISTS (
           SELECT 1 FROM reservations r
           WHERE r.unit_id = u.id
-            AND r.status IN ('HOLD', 'PENDING_PAYMENT', 'CONFIRMED', 'CHECKED_IN')
+            AND (
+              (r.status = 'HOLD' AND r.hold_expires_at > now())
+              OR (r.status = 'PENDING_PAYMENT' AND r.payment_expires_at > now())
+              OR r.status IN ('CONFIRMED', 'CHECKED_IN')
+            )
             AND r.stay && daterange($3::date, $4::date, '[)')
         )
         AND NOT EXISTS (

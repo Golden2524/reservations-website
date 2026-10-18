@@ -84,7 +84,8 @@ paymentsRouter.post('/checkout', asyncRoute(async (request, response) => {
       );
       await client.query(
         `UPDATE reservations
-         SET status = 'PENDING_PAYMENT', hold_expires_at = NULL, updated_at = now()
+         SET status = 'PENDING_PAYMENT', hold_expires_at = NULL,
+             payment_expires_at = now() + interval '15 minutes', updated_at = now()
          WHERE id = $1`,
         [current.id],
       );

@@ -58,7 +58,7 @@ try {
       `INSERT INTO reservations (
         public_reference, unit_id, guest_id, check_in, check_out, guest_count,
         status, nightly_rate_naira, total_naira, idempotency_key
-      ) VALUES ($1, $2, $3, '2026-12-12', '2026-12-16', 1, 'PENDING_PAYMENT', 25000, 100000, $4)`,
+      ) VALUES ($1, $2, $3, '2026-12-12', '2026-12-16', 1, 'CONFIRMED', 25000, 100000, $4)`,
       [`RF-overlap-${suffix}`, unit.rows[0].id, guest.rows[0].id, `overlap-${suffix}`],
     );
   } catch (error) {

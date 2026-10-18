@@ -40,8 +40,9 @@ paystackWebhookRouter.post('/', async (request, response, next) => {
         );
         if (payment.rowCount) {
           await client.query(
-            `UPDATE reservations SET status = 'CONFIRMED', updated_at = now()
-             WHERE id = $1 AND status = 'PENDING_PAYMENT'`,
+            `UPDATE reservations
+             SET status = 'CONFIRMED', payment_expires_at = NULL, updated_at = now()
+             WHERE id = $1 AND status = 'PENDING_PAYMENT' AND payment_expires_at > now()`,
             [payment.rows[0].reservation_id],
           );
         }
