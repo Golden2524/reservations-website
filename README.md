@@ -54,6 +54,12 @@ To validate the double-booking protection against the live database without pres
 npm run db:verify-booking-safety
 ```
 
+## API contract (in progress)
+
+The initial public discovery endpoints are now available at `/api/v1/properties` and `/api/v1/properties/:slug/availability`. They accept validated date and guest-count queries and read availability from PostgreSQL rather than the frontend mock state.
+
+`POST /api/v1/reservations` creates a 15-minute inventory hold and is idempotent. It is deliberately restricted to trusted development clients until the next milestone adds authentication and derives the guest identity from the access token. The PostgreSQL exclusion constraint remains the final guard against double booking.
+
 ## Run locally
 
 ```bash

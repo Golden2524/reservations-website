@@ -3,6 +3,7 @@ import express from 'express';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import { env } from './config/env.js';
+import { errorHandler } from './http/error-handler.js';
 import { apiRouter } from './routes/index.js';
 
 export const app = express();
@@ -17,3 +18,5 @@ app.use('/api/v1', apiRouter);
 app.use((_request, response) => {
   response.status(404).json({ error: 'Route not found' });
 });
+
+app.use(errorHandler);
