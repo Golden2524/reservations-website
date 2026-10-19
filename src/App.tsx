@@ -10,6 +10,7 @@ import Checkout from './Checkout'
 import ReservationsHub from './ReservationsHub'
 import { getApiHealth, getProperties, type Property } from './api'
 import AccountDialog from './AccountDialog'
+import PaymentReturn from './PaymentReturn'
 
 export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string; slug?: string; maxGuests?: number }
 
@@ -118,6 +119,7 @@ export default function App() {
 
       {notice && <div className="app-notice" role="status"><Check size={15}/>{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}>×</button></div>}
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
+      <PaymentReturn account={account} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setNotice('Payment status check closed. You can view your reservation from your account shortly.') }} />
       {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
     </main>
   )

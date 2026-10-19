@@ -32,19 +32,26 @@ paystackWebhookRouter.post('/', async (request, response, next) => {
         [eventId, rawBody.toString('utf8')],
       );
       if (recorded.rowCount && event.event === 'charge.success' && event.data.status === 'success') {
-        const payment = await client.query<{ reservation_id: string }>(
-          `UPDATE payments SET status = 'PAID', updated_at = now()
-           WHERE provider = 'PAYSTACK' AND provider_reference = $1 AND status <> 'PAID'
-           RETURNING reservation_id`,
-          [reference],
+        const payment = await client.query<{ id: string; reservation_id: string }>(
+          `SELECT id, reservation_id FROM payments
+           WHERE provider = 'PAYSTACK' AND provider_reference = $1 FOR UPDATE`, [reference],
         );
         if (payment.rowCount) {
-          await client.query(
-            `UPDATE reservations
-             SET status = 'CONFIRMED', payment_expires_at = NULL, updated_at = now()
-             WHERE id = $1 AND status = 'PENDING_PAYMENT' AND payment_expires_at > now()`,
-            [payment.rows[0].reservation_id],
+          const confirmed = await client.query(
+            `UPDATE reservations SET status = 'CONFIRMED', payment_expires_at = NULL, updated_at = now()
+             WHERE id = $1 AND status = 'PENDING_PAYMENT' AND payment_expires_at > now()
+             RETURNING id`, [payment.rows[0].reservation_id],
           );
+          await client.query(
+            `UPDATE payments SET status = 'PAID', updated_at = now() WHERE id = $1`, [payment.rows[0].id],
+          );
+          if (!confirmed.rowCount) {
+            await client.query(
+              `INSERT INTO reservation_events (reservation_id, event_type, metadata)
+               VALUES ($1, 'PAYMENT_REQUIRES_RECONCILIATION', jsonb_build_object('provider', 'PAYSTACK', 'reference', $2))`,
+              [payment.rows[0].reservation_id, reference],
+            );
+          }
         }
       }
       await client.query('COMMIT');

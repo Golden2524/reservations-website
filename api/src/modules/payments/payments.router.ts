@@ -17,6 +17,29 @@ const paymentReference = () => `RF-PAY-${randomUUID().replaceAll('-', '').slice(
 export const paymentsRouter = Router();
 paymentsRouter.use(requireAuth);
 
+paymentsRouter.get('/:reference', asyncRoute(async (request, response) => {
+  const reference = z.string().trim().regex(/^RF-PAY-[A-Z0-9]+$/).parse(request.params.reference);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query<{
+      payment_status: string; reservation_status: string; public_reference: string; property_name: string;
+    }>(
+      `SELECT pay.status AS payment_status, r.status AS reservation_status, r.public_reference, p.name AS property_name
+       FROM payments pay
+       JOIN reservations r ON r.id = pay.reservation_id
+       JOIN units u ON u.id = r.unit_id
+       JOIN properties p ON p.id = u.property_id
+       WHERE pay.provider = 'PAYSTACK' AND pay.provider_reference = $1 AND r.guest_id = $2`,
+      [reference, request.auth!.userId],
+    );
+    if (!result.rowCount) throw new ApiError(404, 'Payment not found.', 'PAYMENT_NOT_FOUND');
+    response.json({ data: result.rows[0] });
+  } finally {
+    await client.end();
+  }
+}));
+
 paymentsRouter.post('/checkout', asyncRoute(async (request, response) => {
   const input = checkoutSchema.parse(request.body);
   assertPaystackConfigured();
