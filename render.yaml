@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: reserveflow-api
+    runtime: node
+    rootDir: api
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CLIENT_ORIGIN
+        value: https://golden2524.github.io
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_CALLBACK_URL
+        sync: false
+
+# Do not launch paid booking traffic on the free plan: Render free web services
+# sleep after inactivity. Create a separate scheduled worker for
+# `npm run reservations:expire` when moving to an always-on production plan.

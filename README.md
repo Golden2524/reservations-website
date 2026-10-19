@@ -84,6 +84,12 @@ With a test key only, `npm run payments:smoke-test` initializes one sandbox chec
 
 Reservation holds and payment attempts each expire after 15 minutes. `npm run reservations:expire` releases stale inventory; reservation creation also clears expired holds for its requested unit before it attempts an insert. When the API is deployed, this command should run on a scheduled worker every minute.
 
+## Backend deployment
+
+`render.yaml` is a Git-backed deployment blueprint for the Express API. It builds from `api/`, exposes `/api/v1/health`, and keeps every production secret out of Git. In Render, add the Neon `DATABASE_URL` and—only during Paystack testing—the `sk_test_...` secret through the service's environment-variable UI.
+
+The included `free` plan is for development only because free Render web services can sleep while idle. Before accepting real Kuje bookings, use an always-on service and create a scheduled worker that runs `npm run reservations:expire` every minute. After Render gives the API a public HTTPS URL, set Paystack's webhook URL to `https://YOUR-API.onrender.com/api/v1/payments/paystack/webhook`.
+
 ## Run locally
 
 ```bash
