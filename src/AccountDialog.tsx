@@ -5,8 +5,8 @@ import { ApiRequestError, apiRequest } from './api'
 type Account = { accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } }
 type AuthResponse = { data: Account }
 
-export default function AccountDialog({ onClose, onAuthenticated }: { onClose: () => void; onAuthenticated: (account: Account) => void }) {
-  const [mode, setMode] = useState<'login' | 'register'>('register')
+export default function AccountDialog({ onClose, onAuthenticated, initialMode = 'register' }: { onClose: () => void; onAuthenticated: (account: Account) => void; initialMode?: 'login' | 'register' }) {
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 

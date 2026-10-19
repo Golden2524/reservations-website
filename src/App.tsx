@@ -41,6 +41,7 @@ export default function App() {
   const [liveSpaces, setLiveSpaces] = useState<Space[]>([])
   const [catalogueState, setCatalogueState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [accountOpen, setAccountOpen] = useState(false)
+  const [accountMode, setAccountMode] = useState<'login' | 'register'>('register')
   const [reservationsOpen, setReservationsOpen] = useState(false)
   const [account, setAccount] = useState<{ accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } } | null>(() => {
     try { return JSON.parse(sessionStorage.getItem('reserveflow.account') ?? 'null') } catch { return null }
@@ -72,7 +73,7 @@ export default function App() {
         <div className={menuOpen ? 'nav-links open' : 'nav-links'}>
           <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => setMenuOpen(false)}>For partners</a><a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
         </div>
-        <div className="nav-actions"><span className={`api-status ${apiStatus}`} title={apiStatus === 'live' ? 'Secure booking service connected' : apiStatus === 'offline' ? 'Booking service temporarily unavailable' : 'Checking booking service'}><i />{apiStatus === 'live' ? 'Booking live' : apiStatus === 'offline' ? 'Service offline' : 'Connecting'}</span><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label={account ? 'Open your reservations' : 'Create or sign in to your account'} onClick={() => account ? setReservationsOpen(true) : setAccountOpen(true)}>{account ? `${account.user.firstName[0]}${account.user.lastName[0]}`.toUpperCase() : 'AM'}</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
+        <div className="nav-actions"><span className={`api-status ${apiStatus}`} title={apiStatus === 'live' ? 'Secure booking service connected' : apiStatus === 'offline' ? 'Booking service temporarily unavailable' : 'Checking booking service'}><i />{apiStatus === 'live' ? 'Booking live' : apiStatus === 'offline' ? 'Service offline' : 'Connecting'}</span><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label={account ? 'Open your reservations' : 'Create or sign in to your account'} onClick={() => { if (account) setReservationsOpen(true); else { setAccountMode('register'); setAccountOpen(true) } }}>{account ? `${account.user.firstName[0]}${account.user.lastName[0]}`.toUpperCase() : 'AM'}</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
       </nav>
 
       <section id="top" className="hero shell">
@@ -120,9 +121,9 @@ export default function App() {
       <footer><div className="shell footer-inner"><a className="brand" href="#top"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a><p>Make space for what matters.</p><span>© 2026 ReserveFlow</span></div></footer>
 
       {notice && <div className="app-notice" role="status"><Check size={15}/>{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}>×</button></div>}
-      {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
+      {accountOpen && <AccountDialog initialMode={accountMode} onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
       {reservationsOpen && account && <MyReservations account={account} onClose={() => setReservationsOpen(false)} />}
-      <PaymentReturn account={account} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setNotice('Payment status check closed. You can view your reservation from your account shortly.') }} />
+      <PaymentReturn account={account} onSignInRequired={() => { setAccountMode('login'); setAccountOpen(true) }} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setNotice('Payment status check closed. You can view your reservation from your account shortly.') }} />
       {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
     </main>
   )

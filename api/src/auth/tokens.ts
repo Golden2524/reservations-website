@@ -20,7 +20,10 @@ export const signAccessToken = async (claims: AccessTokenClaims): Promise<string
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(claims.userId)
     .setIssuedAt()
-    .setExpirationTime('15m')
+    // A checkout plus an external 3-D Secure / bank-auth step can legitimately
+    // exceed a short booking hold. Keep the bearer session modest but long enough
+    // for the guest to return and privately verify the payment outcome.
+    .setExpirationTime('1h')
     .setIssuer('reserveflow-api')
     .setAudience('reserveflow-client')
     .sign(accessTokenSecret());

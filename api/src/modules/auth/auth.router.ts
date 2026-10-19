@@ -30,7 +30,7 @@ const toAccountResponse = async (user: {
 }) => ({
   accessToken: await signAccessToken({ userId: user.id, email: user.email, role: user.role }),
   tokenType: 'Bearer',
-  expiresInSeconds: 900,
+  expiresInSeconds: 3600,
   user: {
     id: user.id,
     email: user.email,
