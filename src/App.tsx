@@ -8,10 +8,10 @@ import Dashboard, { type DashboardRole } from './Dashboard'
 import Marketplace from './Marketplace'
 import Checkout from './Checkout'
 import ReservationsHub from './ReservationsHub'
-import { getApiHealth } from './api'
+import { getApiHealth, getProperties, type Property } from './api'
 import AccountDialog from './AccountDialog'
 
-export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string }
+export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string; slug?: string; maxGuests?: number }
 
 const spaces: Space[] = [
   { name: 'The Glasshouse', kind: 'Boutique stay', place: 'Victoria Island, Lagos', price: 84000, image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85', status: 'Only 2 suites left', seats: '2 guests' },
@@ -20,6 +20,12 @@ const spaces: Space[] = [
 ]
 
 const dates = ['MON 14', 'TUE 15', 'WED 16', 'THU 17', 'FRI 18']
+const liveImages: Record<string, string> = {
+  'aso-view-courtyard': 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85',
+  'maple-house-kuje': 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85',
+  'green-haven-lodge': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
+}
+const asLiveSpace = (property: Property): Space => ({ name: property.name, kind: 'Kuje accommodation', place: `${property.area}, ${property.city}`, price: property.from_nightly_rate_naira, image: liveImages[property.slug] ?? spaces[0].image, status: 'Live availability', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests })
 
 export default function App() {
   const [selectedDate, setSelectedDate] = useState(1)
@@ -30,6 +36,8 @@ export default function App() {
   const [activeRole, setActiveRole] = useState<DashboardRole>('guest')
   const [notice, setNotice] = useState('')
   const [apiStatus, setApiStatus] = useState<'checking' | 'live' | 'offline'>('checking')
+  const [liveSpaces, setLiveSpaces] = useState<Space[]>([])
+  const [catalogueState, setCatalogueState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [accountOpen, setAccountOpen] = useState(false)
   const [account, setAccount] = useState<{ accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } } | null>(() => {
     try { return JSON.parse(sessionStorage.getItem('reserveflow.account') ?? 'null') } catch { return null }
@@ -43,6 +51,14 @@ export default function App() {
       .catch(() => active && setApiStatus('offline'))
     return () => { active = false }
   }, [])
+
+  useEffect(() => {
+    let active = true
+    getProperties(guests)
+      .then((result) => { if (active) { setLiveSpaces(result.data.map(asLiveSpace)); setCatalogueState('ready') } })
+      .catch(() => active && setCatalogueState('unavailable'))
+    return () => { active = false }
+  }, [guests])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
 
@@ -78,17 +94,17 @@ export default function App() {
       <section className="trust-band"><div className="shell trust-inner"><p>Trusted by people who value their time.</p><div><strong>12K<span>+</span></strong><small>happy bookers</small></div><div><strong>480<span>+</span></strong><small>remarkable spaces</small></div><div><strong>98<span>%</span></strong><small>would book again</small></div></div></section>
 
       <section id="explore" className="explore shell">
-        <div className="section-heading"><div><p className="kicker">CURATED FOR YOUR DAY</p><h2>Find your perfect <em>place.</em></h2></div><a href="#all">Browse all spaces <ArrowRight size={18}/></a></div>
+        <div className="section-heading"><div><p className="kicker">LIVE KUJE DEMO CATALOGUE</p><h2>Find your perfect <em>place.</em></h2></div><a href="#all">Browse all spaces <ArrowRight size={18}/></a></div>
         <div className="date-strip"><button className="date-arrow">‹</button>{dates.map((date, index) => <button key={date} onClick={() => setSelectedDate(index)} className={selectedDate === index ? 'date active' : 'date'}>{date}</button>)}<button className="date-arrow">›</button></div>
         <div className="space-grid">
-          {spaces.map((space) => <article className="space-card" key={space.name}>
+          {(liveSpaces.length ? liveSpaces : spaces).map((space) => <article className="space-card" key={space.name}>
             <div className="space-image"><img src={space.image} alt={space.name} /><span className="pill">{space.kind}</span><button aria-label={`${saved.includes(space.name) ? 'Remove' : 'Save'} ${space.name}`} className={saved.includes(space.name) ? 'save saved' : 'save'} onClick={() => { toggleSaved(space.name); setNotice(saved.includes(space.name) ? `${space.name} removed from saved spaces.` : `${space.name} saved for later.`) }}><Heart size={18} fill={saved.includes(space.name) ? 'currentColor' : 'none'} /></button><div className="image-status"><span className="live-dot"/>{space.status}</div></div>
-            <div className="space-info"><p>{space.place}</p><h3>{space.name}</h3><div className="space-bottom"><span><strong>₦{space.price.toLocaleString()}</strong> <small>/ {space.kind === 'Boutique stay' ? 'night' : 'session'}</small></span><button onClick={() => setSelectedSpace(space)}>Book now <ArrowRight size={16}/></button></div></div>
+            <div className="space-info"><p>{space.place}</p><h3>{space.name}</h3><div className="space-bottom"><span><strong>₦{space.price.toLocaleString()}</strong> <small>/ {space.slug ? 'night' : 'session'}</small></span><button onClick={() => space.slug ? setSelectedSpace(space) : setNotice(catalogueState === 'unavailable' ? 'Live catalogue is temporarily unavailable. Please try again shortly.' : 'This showcase card is not connected to checkout. Choose a live Kuje listing.')}>{space.slug ? <>Book now <ArrowRight size={16}/></> : 'Showcase only'}</button></div></div>
           </article>)}
         </div>
       </section>
 
-      <Marketplace onReserve={(listing) => setSelectedSpace({ name: listing.name, kind: listing.type, place: `${listing.location}, Lagos`, price: listing.price, image: listing.image, status: listing.availability, seats: listing.perks[1] })} />
+      <Marketplace onReserve={() => setNotice('The marketplace cards are design showcases. Use a live Kuje listing above to test the reservation flow.')} />
 
       <ReservationsHub />
 
@@ -102,7 +118,7 @@ export default function App() {
 
       {notice && <div className="app-notice" role="status"><Check size={15}/>{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}>×</button></div>}
       {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
-      {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} selectedDate={dates[selectedDate]} onClose={() => setSelectedSpace(null)} />}
+      {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
     </main>
   )
 }

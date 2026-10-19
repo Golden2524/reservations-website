@@ -37,3 +37,9 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 }
 
 export const getApiHealth = () => apiRequest<ApiHealth>('/health')
+
+export type Property = { slug: string; name: string; description: string; area: string; city: string; state: string; from_nightly_rate_naira: number; maximum_guests: number }
+export type Unit = { id: string; name: string; unit_type: string; max_guests: number; base_nightly_rate_naira: number; cleaning_fee_naira: number }
+
+export const getProperties = (guests: number) => apiRequest<{ data: Property[] }>(`/properties?area=Kuje&guests=${guests}`)
+export const getAvailability = (slug: string, checkIn: string, checkOut: string, guests: number) => apiRequest<{ data: Unit[] }>(`/properties/${slug}/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`)
