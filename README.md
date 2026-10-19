@@ -99,6 +99,18 @@ Reservation holds and payment attempts each expire after 15 minutes. `npm run re
 
 The included `free` plan is for development only because free Render web services can sleep while idle. Before accepting real Kuje bookings, use an always-on service and create a scheduled worker that runs `npm run reservations:expire` every minute. After Render gives the API a public HTTPS URL, set Paystack's webhook URL to `https://YOUR-API.onrender.com/api/v1/payments/paystack/webhook`.
 
+## Netlify frontend deployment
+
+`netlify.toml` deploys the Vite app with `npm run build`, publishes `dist`, and rewrites SPA routes to `index.html` to prevent direct-link 404s. In Netlify, import `Golden2524/reservations-website` from GitHub and deploy the `master` branch.
+
+After Netlify gives the site a `https://YOUR-SITE.netlify.app` URL, add it to Render’s `CLIENT_ORIGIN` environment variable as a comma-separated allowed-origin list, for example:
+
+```text
+https://golden2524.github.io,https://YOUR-SITE.netlify.app
+```
+
+Redeploy the Render service after saving this value. This keeps the booking API reachable only from the approved frontend origins.
+
 ## Kuje launch checklist
 
 Do not accept live payments until every item below is complete:
