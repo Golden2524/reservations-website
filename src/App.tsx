@@ -9,6 +9,7 @@ import Marketplace from './Marketplace'
 import Checkout from './Checkout'
 import ReservationsHub from './ReservationsHub'
 import { getApiHealth } from './api'
+import AccountDialog from './AccountDialog'
 
 export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string }
 
@@ -29,6 +30,10 @@ export default function App() {
   const [activeRole, setActiveRole] = useState<DashboardRole>('guest')
   const [notice, setNotice] = useState('')
   const [apiStatus, setApiStatus] = useState<'checking' | 'live' | 'offline'>('checking')
+  const [accountOpen, setAccountOpen] = useState(false)
+  const [account, setAccount] = useState<{ accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } } | null>(() => {
+    try { return JSON.parse(sessionStorage.getItem('reserveflow.account') ?? 'null') } catch { return null }
+  })
   const availability = useMemo(() => 34 - selectedDate * 3, [selectedDate])
 
   useEffect(() => {
@@ -48,7 +53,7 @@ export default function App() {
         <div className={menuOpen ? 'nav-links open' : 'nav-links'}>
           <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => setMenuOpen(false)}>For partners</a><a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
         </div>
-        <div className="nav-actions"><span className={`api-status ${apiStatus}`} title={apiStatus === 'live' ? 'Secure booking service connected' : apiStatus === 'offline' ? 'Booking service temporarily unavailable' : 'Checking booking service'}><i />{apiStatus === 'live' ? 'Booking live' : apiStatus === 'offline' ? 'Service offline' : 'Connecting'}</span><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label="Open Amara’s account">AM</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
+        <div className="nav-actions"><span className={`api-status ${apiStatus}`} title={apiStatus === 'live' ? 'Secure booking service connected' : apiStatus === 'offline' ? 'Booking service temporarily unavailable' : 'Checking booking service'}><i />{apiStatus === 'live' ? 'Booking live' : apiStatus === 'offline' ? 'Service offline' : 'Connecting'}</span><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label={account ? 'Open your account' : 'Create or sign in to your account'} onClick={() => setAccountOpen(true)}>{account ? `${account.user.firstName[0]}${account.user.lastName[0]}`.toUpperCase() : 'AM'}</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
       </nav>
 
       <section id="top" className="hero shell">
@@ -96,6 +101,7 @@ export default function App() {
       <footer><div className="shell footer-inner"><a className="brand" href="#top"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a><p>Make space for what matters.</p><span>© 2026 ReserveFlow</span></div></footer>
 
       {notice && <div className="app-notice" role="status"><Check size={15}/>{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}>×</button></div>}
+      {accountOpen && <AccountDialog onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
       {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} selectedDate={dates[selectedDate]} onClose={() => setSelectedSpace(null)} />}
     </main>
   )
