@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight, Bell, CalendarDays, Check, ChevronDown, Clock3, Compass,
   Heart, MapPin, Menu, Minus, Plus, Search, ShieldCheck, Sparkles,
@@ -8,6 +8,7 @@ import Dashboard, { type DashboardRole } from './Dashboard'
 import Marketplace from './Marketplace'
 import Checkout from './Checkout'
 import ReservationsHub from './ReservationsHub'
+import { getApiHealth } from './api'
 
 export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string }
 
@@ -27,7 +28,16 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeRole, setActiveRole] = useState<DashboardRole>('guest')
   const [notice, setNotice] = useState('')
+  const [apiStatus, setApiStatus] = useState<'checking' | 'live' | 'offline'>('checking')
   const availability = useMemo(() => 34 - selectedDate * 3, [selectedDate])
+
+  useEffect(() => {
+    let active = true
+    getApiHealth()
+      .then(() => active && setApiStatus('live'))
+      .catch(() => active && setApiStatus('offline'))
+    return () => { active = false }
+  }, [])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
 
@@ -38,7 +48,7 @@ export default function App() {
         <div className={menuOpen ? 'nav-links open' : 'nav-links'}>
           <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => setMenuOpen(false)}>For partners</a><a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
         </div>
-        <div className="nav-actions"><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label="Open Amara’s account">AM</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
+        <div className="nav-actions"><span className={`api-status ${apiStatus}`} title={apiStatus === 'live' ? 'Secure booking service connected' : apiStatus === 'offline' ? 'Booking service temporarily unavailable' : 'Checking booking service'}><i />{apiStatus === 'live' ? 'Booking live' : apiStatus === 'offline' ? 'Service offline' : 'Connecting'}</span><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label="Open Amara’s account">AM</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
       </nav>
 
       <section id="top" className="hero shell">
