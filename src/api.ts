@@ -43,3 +43,15 @@ export type Unit = { id: string; name: string; unit_type: string; max_guests: nu
 
 export const getProperties = (guests: number) => apiRequest<{ data: Property[] }>(`/properties?area=Kuje&guests=${guests}`)
 export const getAvailability = (slug: string, checkIn: string, checkOut: string, guests: number) => apiRequest<{ data: Unit[] }>(`/properties/${slug}/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`)
+
+export type Account = { accessToken: string; user: { id?: string; firstName: string; lastName: string; email: string; role: string } }
+export type HostApplication = { id: string; status: 'SUBMITTED' | 'REJECTED' | 'APPROVED'; business_name: string; business_phone: string; notes?: string | null; review_note?: string | null; created_at: string; updated_at: string; reviewed_at?: string | null }
+export type HostProperty = { id: string; name: string; slug: string; status: string; area: string; city: string; created_at: string; unit_count: number }
+
+const bearer = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` })
+export const getMyHostApplication = (accessToken: string) => apiRequest<{ data: HostApplication | null }>('/host-applications/mine', { headers: bearer(accessToken) })
+export const submitHostApplication = (accessToken: string, body: { businessName: string; businessPhone: string; notes?: string }) => apiRequest<{ data: HostApplication }>('/host-applications', { method: 'POST', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify(body) })
+export const getHostProperties = (accessToken: string) => apiRequest<{ data: HostProperty[] }>('/host/properties', { headers: bearer(accessToken) })
+export const createHostProperty = (accessToken: string, body: Record<string, unknown>) => apiRequest<{ data: HostProperty }>('/host/properties', { method: 'POST', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify(body) })
+export const createHostUnit = (accessToken: string, propertyId: string, body: Record<string, unknown>) => apiRequest<{ data: { id: string } }>(`/host/properties/${propertyId}/units`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify(body) })
+export const submitHostProperty = (accessToken: string, propertyId: string) => apiRequest<{ data: HostProperty }>(`/host/properties/${propertyId}/submit`, { method: 'POST', headers: bearer(accessToken) })

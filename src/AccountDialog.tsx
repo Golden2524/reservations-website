@@ -2,7 +2,7 @@ import { FormEvent, useState } from 'react'
 import { Check, LoaderCircle, X } from 'lucide-react'
 import { ApiRequestError, apiRequest } from './api'
 
-type Account = { accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } }
+type Account = { accessToken: string; user: { id?: string; firstName: string; lastName: string; email: string; role: string } }
 type AuthResponse = { data: Account }
 
 export default function AccountDialog({ onClose, onAuthenticated, initialMode = 'register' }: { onClose: () => void; onAuthenticated: (account: Account) => void; initialMode?: 'login' | 'register' }) {

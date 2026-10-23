@@ -12,6 +12,7 @@ import { getApiHealth, getProperties, type Property } from './api'
 import AccountDialog from './AccountDialog'
 import PaymentReturn from './PaymentReturn'
 import MyReservations from './MyReservations'
+import HostPortal from './HostPortal'
 
 export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string; slug?: string; maxGuests?: number }
 
@@ -43,6 +44,7 @@ export default function App() {
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountMode, setAccountMode] = useState<'login' | 'register'>('register')
   const [reservationsOpen, setReservationsOpen] = useState(false)
+  const [hostPortalOpen, setHostPortalOpen] = useState(false)
   const [account, setAccount] = useState<{ accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } } | null>(() => {
     try { return JSON.parse(sessionStorage.getItem('reserveflow.account') ?? 'null') } catch { return null }
   })
@@ -71,7 +73,7 @@ export default function App() {
       <nav className="nav shell">
         <a className="brand" href="#top" aria-label="ReserveFlow home"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a>
         <div className={menuOpen ? 'nav-links open' : 'nav-links'}>
-          <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => setMenuOpen(false)}>For partners</a><a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
+          <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => { setMenuOpen(false); if (account) setHostPortalOpen(true); else { setAccountMode('register'); setAccountOpen(true); setNotice('Create a guest account first, then return here to apply as a host.') } }}>For partners</a><a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
         </div>
         <div className="nav-actions"><span className={`api-status ${apiStatus}`} title={apiStatus === 'live' ? 'Secure booking service connected' : apiStatus === 'offline' ? 'Booking service temporarily unavailable' : 'Checking booking service'}><i />{apiStatus === 'live' ? 'Booking live' : apiStatus === 'offline' ? 'Service offline' : 'Connecting'}</span><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label={account ? 'Open your reservations' : 'Create or sign in to your account'} onClick={() => { if (account) setReservationsOpen(true); else { setAccountMode('register'); setAccountOpen(true) } }}>{account ? `${account.user.firstName[0]}${account.user.lastName[0]}`.toUpperCase() : 'AM'}</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
       </nav>
@@ -114,7 +116,7 @@ export default function App() {
 
       <section id="how" className="how"><div className="shell how-inner"><div className="how-copy"><p className="kicker">SIMPLE BY DESIGN</p><h2>Good plans<br />start <em>here.</em></h2><p>Every detail is designed to remove friction, so you can get on with making the most of your time.</p><a href="#explore" className="text-link">Discover the experience <ArrowRight size={18}/></a></div><div className="steps"><div><span>01</span><h3>Find your fit</h3><p>Search a trusted collection of spaces and services that feel just right.</p></div><div><span>02</span><h3>Book in seconds</h3><p>See live availability, choose your time, and confirm without the back-and-forth.</p></div><div><span>03</span><h3>Show up present</h3><p>Everything is in one calm place — from access details to useful reminders.</p></div></div></div></section>
 
-      <section id="partners" className="partner shell"><div className="partner-art"><img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1000&q=85" alt="Team collaborating at a table" /><div className="partner-tag"><Compass size={18}/><span>One platform.<br/><strong>Endless potential.</strong></span></div></div><div className="partner-copy"><p className="kicker">FOR SPACE MAKERS</p><h2>Your craft<br />deserves <em>better tools.</em></h2><p>From boutique hosts to ambitious teams, ReserveFlow gives you a refined way to manage availability, welcome guests, and grow on your terms.</p><button className="dark-button">Become a partner <ArrowRight size={18}/></button></div></section>
+      <section id="partners" className="partner shell"><div className="partner-art"><img src="https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&w=1000&q=85" alt="Team collaborating at a table" /><div className="partner-tag"><Compass size={18}/><span>One platform.<br/><strong>Endless potential.</strong></span></div></div><div className="partner-copy"><p className="kicker">FOR SPACE MAKERS</p><h2>Your craft<br />deserves <em>better tools.</em></h2><p>From boutique hosts to ambitious teams, ReserveFlow gives you a refined way to manage availability, welcome guests, and grow on your terms.</p><button className="dark-button" onClick={() => { if (account) setHostPortalOpen(true); else { setAccountMode('register'); setAccountOpen(true); setNotice('Create a guest account first, then return here to apply as a host.') } }}>{account?.user.role === 'HOST' ? 'Open host studio' : 'Become a partner'} <ArrowRight size={18}/></button></div></section>
 
       <section id="platform" className="platform"><div className="shell"><div className="platform-heading"><div><p className="kicker">THE OPERATING SYSTEM FOR RESERVATIONS</p><h2>One platform.<br/><em>Every perspective.</em></h2></div><p>See how ReserveFlow gives every participant the right information and controls at exactly the right moment.</p></div><div className="role-tabs" role="tablist" aria-label="Dashboard demo roles">{([['guest', 'Guest'], ['partner', 'Partner'], ['admin', 'Admin']] as const).map(([value, label]) => <button key={value} className={activeRole === value ? 'active' : ''} onClick={() => setActiveRole(value)} role="tab" aria-selected={activeRole === value}>{label}</button>)}</div><Dashboard role={activeRole} /></div></section>
 
@@ -123,6 +125,7 @@ export default function App() {
       {notice && <div className="app-notice" role="status"><Check size={15}/>{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}>×</button></div>}
       {accountOpen && <AccountDialog initialMode={accountMode} onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
       {reservationsOpen && account && <MyReservations account={account} onClose={() => setReservationsOpen(false)} />}
+      {hostPortalOpen && account && <HostPortal account={account} onClose={() => setHostPortalOpen(false)} onAccountChanged={() => { setHostPortalOpen(false); setAccountMode('login'); setAccountOpen(true) }} />}
       <PaymentReturn account={account} onSignInRequired={() => { setAccountMode('login'); setAccountOpen(true) }} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setNotice('Payment status check closed. You can view your reservation from your account shortly.') }} />
       {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
     </main>

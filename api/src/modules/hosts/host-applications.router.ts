@@ -13,6 +13,25 @@ const applicationSchema = z.object({
 
 export const hostApplicationsRouter = Router();
 
+// A guest needs to be able to return to the partner area and see where their
+// application stands without submitting the same business details again.
+hostApplicationsRouter.get('/mine', requireAuth, asyncRoute(async (request, response) => {
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT id, status, business_name, business_phone, notes, review_note, created_at, updated_at, reviewed_at
+       FROM host_applications
+       WHERE applicant_id = $1
+       LIMIT 1`,
+      [request.auth!.userId],
+    );
+    response.json({ data: result.rows[0] ?? null });
+  } finally {
+    await client.end();
+  }
+}));
+
 hostApplicationsRouter.post('/', requireAuth, asyncRoute(async (request, response) => {
   const input = applicationSchema.parse(request.body);
   if (request.auth!.role !== 'GUEST') {
