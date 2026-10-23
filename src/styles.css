@@ -31,3 +31,5 @@
 
 .reservation-tools { position: absolute; top: 89px; right: 36px; display: flex; gap: 7px; }.reservations-signout { display: flex; align-items: center; gap: 6px; color: #9f5144; background: #fff0eb; padding: 8px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; }
 @media (max-width: 670px) { .reservation-tools { top: 87px; right: 22px; }.reservations-signout { padding: 8px; font-size: 10px; } }
+
+.app-recovery { min-height: 100vh; display: grid; align-content: center; justify-items: start; gap: 15px; max-width: 560px; margin: auto; padding: 35px; }.app-recovery h1 { margin: 0; color: #20382d; font-size: clamp(36px, 8vw, 55px); letter-spacing: -2px; }.app-recovery p:not(.kicker) { margin: 0; color: #64736a; line-height: 1.65; }.app-recovery button { padding: 13px 15px; border-radius: 7px; background: #1d5949; color: white; font-weight: 700; }
