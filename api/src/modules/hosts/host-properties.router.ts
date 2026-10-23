@@ -14,6 +14,7 @@ const propertySchema = z.object({
   area: z.string().trim().min(2).max(100),
   city: z.string().trim().min(2).max(100).default('Kuje'),
   state: z.string().trim().min(2).max(100).default('FCT Abuja'),
+  photoUrls: z.array(z.string().url().refine((value) => value.startsWith('https://'), 'Photo URLs must use HTTPS')).min(1).max(8),
   checkInTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('14:00'),
   checkOutTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('11:00'),
 });
@@ -68,12 +69,12 @@ hostPropertiesRouter.post('/', asyncRoute(async (request, response) => {
   try {
     const result = await client.query(
       `INSERT INTO properties (
-        host_id, name, slug, description, address_line_1, area, city, state, check_in_time, check_out_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::time, $10::time)
-      RETURNING id, name, slug, status, area, city, state, created_at`,
+        host_id, name, slug, description, address_line_1, area, city, state, photo_urls, check_in_time, check_out_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::time, $11::time)
+      RETURNING id, name, slug, status, area, city, state, photo_urls, created_at`,
       [
         request.auth!.userId, input.name, input.slug, input.description, input.addressLine1,
-        input.area, input.city, input.state, input.checkInTime, input.checkOutTime,
+        input.area, input.city, input.state, input.photoUrls, input.checkInTime, input.checkOutTime,
       ],
     );
     response.status(201).json({ data: result.rows[0] });

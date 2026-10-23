@@ -38,7 +38,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
 export const getApiHealth = () => apiRequest<ApiHealth>('/health')
 
-export type Property = { slug: string; name: string; description: string; area: string; city: string; state: string; from_nightly_rate_naira: number; maximum_guests: number }
+export type Property = { slug: string; name: string; description: string; area: string; city: string; state: string; photo_urls?: string[]; from_nightly_rate_naira: number; maximum_guests: number }
 export type Unit = { id: string; name: string; unit_type: string; max_guests: number; base_nightly_rate_naira: number; cleaning_fee_naira: number }
 
 export const getProperties = (guests: number) => apiRequest<{ data: Property[] }>(`/properties?area=Kuje&guests=${guests}`)
@@ -57,7 +57,7 @@ export const createHostUnit = (accessToken: string, propertyId: string, body: Re
 export const submitHostProperty = (accessToken: string, propertyId: string) => apiRequest<{ data: HostProperty }>(`/host/properties/${propertyId}/submit`, { method: 'POST', headers: bearer(accessToken) })
 
 export type AdminHostApplication = { id: string; business_name: string; business_phone: string; notes?: string | null; status: string; created_at: string; applicant_id: string; email: string; first_name: string; last_name: string }
-export type AdminPropertyReview = { id: string; name: string; slug: string; description: string; address_line_1: string; area: string; city: string; state: string; status: string; created_at: string; updated_at: string; business_name: string; host_email: string; unit_count: number }
+export type AdminPropertyReview = { id: string; name: string; slug: string; description: string; address_line_1: string; area: string; city: string; state: string; photo_urls?: string[]; status: string; created_at: string; updated_at: string; business_name: string; host_email: string; unit_count: number }
 export const getAdminHostApplications = (accessToken: string) => apiRequest<{ data: AdminHostApplication[] }>('/admin/host-applications', { headers: bearer(accessToken) })
 export const reviewHostApplication = (accessToken: string, id: string, decision: 'approve' | 'reject', reviewNote?: string) => apiRequest(`/admin/host-applications/${id}/${decision}`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify({ reviewNote }) })
 export const getAdminPropertyReviews = (accessToken: string) => apiRequest<{ data: AdminPropertyReview[] }>('/admin/properties/review', { headers: bearer(accessToken) })

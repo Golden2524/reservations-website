@@ -34,7 +34,7 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
   try {
     const result = await client.query(
       `SELECT
-        p.id, p.slug, p.name, p.description, p.area, p.city, p.state,
+        p.id, p.slug, p.name, p.description, p.area, p.city, p.state, p.photo_urls,
         MIN(u.base_nightly_rate_naira) AS from_nightly_rate_naira,
         MAX(u.max_guests) AS maximum_guests
       FROM properties p

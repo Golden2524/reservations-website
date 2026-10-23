@@ -94,7 +94,7 @@ adminRouter.get('/properties/review', asyncRoute(async (_request, response) => {
   await client.connect();
   try {
     const result = await client.query(
-      `SELECT p.id, p.name, p.slug, p.description, p.address_line_1, p.area, p.city, p.state,
+      `SELECT p.id, p.name, p.slug, p.description, p.address_line_1, p.area, p.city, p.state, p.photo_urls,
         p.status, p.created_at, p.updated_at, h.business_name, u.email AS host_email,
         COUNT(un.id)::int AS unit_count
        FROM properties p
