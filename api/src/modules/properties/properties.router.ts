@@ -40,7 +40,11 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
       FROM properties p
       JOIN units u ON u.property_id = p.id AND u.status = 'ACTIVE'
       WHERE p.status = 'ACTIVE'
-        AND ($1::text IS NULL OR p.area ILIKE '%' || $1 || '%')
+        AND (
+          $1::text IS NULL
+          OR p.area ILIKE '%' || $1 || '%'
+          OR p.city ILIKE '%' || $1 || '%'
+        )
         AND u.max_guests >= $2
         AND (
           $3::date IS NULL OR NOT EXISTS (
