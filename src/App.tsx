@@ -13,6 +13,7 @@ import AccountDialog from './AccountDialog'
 import PaymentReturn from './PaymentReturn'
 import MyReservations from './MyReservations'
 import HostPortal from './HostPortal'
+import AdminReviewPortal from './AdminReviewPortal'
 
 export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string; slug?: string; maxGuests?: number }
 
@@ -45,6 +46,7 @@ export default function App() {
   const [accountMode, setAccountMode] = useState<'login' | 'register'>('register')
   const [reservationsOpen, setReservationsOpen] = useState(false)
   const [hostPortalOpen, setHostPortalOpen] = useState(false)
+  const [adminPortalOpen, setAdminPortalOpen] = useState(false)
   const [account, setAccount] = useState<{ accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } } | null>(() => {
     try { return JSON.parse(sessionStorage.getItem('reserveflow.account') ?? 'null') } catch { return null }
   })
@@ -73,7 +75,7 @@ export default function App() {
       <nav className="nav shell">
         <a className="brand" href="#top" aria-label="ReserveFlow home"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a>
         <div className={menuOpen ? 'nav-links open' : 'nav-links'}>
-          <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => { setMenuOpen(false); if (account) setHostPortalOpen(true); else { setAccountMode('register'); setAccountOpen(true); setNotice('Create a guest account first, then return here to apply as a host.') } }}>For partners</a><a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
+          <a href="#explore" onClick={() => setMenuOpen(false)}>Explore</a><a href="#partners" onClick={() => { setMenuOpen(false); if (account) setHostPortalOpen(true); else { setAccountMode('register'); setAccountOpen(true); setNotice('Create a guest account first, then return here to apply as a host.') } }}>For partners</a>{account?.user.role === 'ADMIN' && <button className="nav-admin-link" onClick={() => { setMenuOpen(false); setAdminPortalOpen(true) }}>Owner review</button>}<a href="#how" onClick={() => setMenuOpen(false)}>How it works</a>
         </div>
         <div className="nav-actions"><span className={`api-status ${apiStatus}`} title={apiStatus === 'live' ? 'Secure booking service connected' : apiStatus === 'offline' ? 'Booking service temporarily unavailable' : 'Checking booking service'}><i />{apiStatus === 'live' ? 'Booking live' : apiStatus === 'offline' ? 'Service offline' : 'Connecting'}</span><button className="icon-button" aria-label="Show notifications" onClick={() => setNotice('You’re all caught up — no new reservation updates.')}><Bell size={18} /></button><button className="avatar" aria-label={account ? 'Open your reservations' : 'Create or sign in to your account'} onClick={() => { if (account) setReservationsOpen(true); else { setAccountMode('register'); setAccountOpen(true) } }}>{account ? `${account.user.firstName[0]}${account.user.lastName[0]}`.toUpperCase() : 'AM'}</button><button className="menu-button" aria-label="Toggle navigation menu" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu size={22} /></button></div>
       </nav>
@@ -126,6 +128,7 @@ export default function App() {
       {accountOpen && <AccountDialog initialMode={accountMode} onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
       {reservationsOpen && account && <MyReservations account={account} onClose={() => setReservationsOpen(false)} />}
       {hostPortalOpen && account && <HostPortal account={account} onClose={() => setHostPortalOpen(false)} onAccountChanged={() => { setHostPortalOpen(false); setAccountMode('login'); setAccountOpen(true) }} />}
+      {adminPortalOpen && account?.user.role === 'ADMIN' && <AdminReviewPortal account={account} onClose={() => setAdminPortalOpen(false)} />}
       <PaymentReturn account={account} onSignInRequired={() => { setAccountMode('login'); setAccountOpen(true) }} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setNotice('Payment status check closed. You can view your reservation from your account shortly.') }} />
       {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
     </main>
