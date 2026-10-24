@@ -58,6 +58,7 @@ export const submitHostProperty = (accessToken: string, propertyId: string) => a
 export type UploadSignature = { cloudName: string; apiKey: string; timestamp: number; folder: string; signature: string }
 export const getPropertyImageUploadSignature = (accessToken: string) => apiRequest<{ data: UploadSignature }>('/uploads/property-image-signature', { method: 'POST', headers: bearer(accessToken) })
 export const updateHostPropertyPhotos = (accessToken: string, propertyId: string, photoUrls: string[]) => apiRequest<{ data: HostProperty }>(`/host/properties/${propertyId}/photos`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify({ photoUrls }) })
+export const submitSupportRequest = (body: { name: string; email: string; topic: string; message: string; reservationReference?: string }) => apiRequest<{ data: { reference: string } }>('/support/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
 export type AdminHostApplication = { id: string; business_name: string; business_phone: string; notes?: string | null; status: string; created_at: string; applicant_id: string; email: string; first_name: string; last_name: string }
 export type AdminPropertyReview = { id: string; name: string; slug: string; description: string; address_line_1: string; area: string; city: string; state: string; photo_urls?: string[]; status: string; created_at: string; updated_at: string; business_name: string; host_email: string; unit_count: number }
