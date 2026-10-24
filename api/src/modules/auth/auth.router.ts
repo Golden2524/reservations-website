@@ -6,6 +6,7 @@ import { signAccessToken } from '../../auth/tokens.js';
 import { createDatabaseClient } from '../../db/client.js';
 import { ApiError } from '../../errors/api-error.js';
 import { asyncRoute } from '../../http/async-route.js';
+import { consumeActionToken, sendPasswordResetEmail, sendVerificationEmail } from './account-email.js';
 
 const password = z.string().min(12).max(128)
   .regex(/[a-z]/, 'Password must include a lowercase letter')
@@ -24,6 +25,10 @@ const loginSchema = z.object({
   email: z.string().email().max(254).transform((value) => value.trim().toLowerCase()),
   password: z.string().min(1).max(128),
 });
+
+const actionTokenSchema = z.object({ token: z.string().min(20).max(200) });
+const resetPasswordSchema = actionTokenSchema.extend({ password });
+const emailSchema = z.object({ email: z.string().email().max(254).transform((value) => value.trim().toLowerCase()) });
 
 const toAccountResponse = async (user: {
   id: string; email: string; first_name: string; last_name: string; role: 'GUEST' | 'HOST' | 'ADMIN';
@@ -62,7 +67,9 @@ authRouter.post('/register', asyncRoute(async (request, response) => {
       passwordHash,
     ]);
     await client.query('COMMIT');
-    response.status(201).json({ data: await toAccountResponse(user.rows[0]) });
+    const account = user.rows[0];
+    const emailVerificationSent = await sendVerificationEmail({ id: account.id, email: account.email, firstName: account.first_name });
+    response.status(201).json({ data: { ...await toAccountResponse(account), emailVerificationSent } });
   } catch (error) {
     await client.query('ROLLBACK');
     if (error instanceof DatabaseError && error.code === '23505') {
@@ -72,6 +79,37 @@ authRouter.post('/register', asyncRoute(async (request, response) => {
   } finally {
     await client.end();
   }
+}));
+
+authRouter.post('/request-password-reset', asyncRoute(async (request, response) => {
+  const input = emailSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query<{ id: string; email: string; first_name: string }>('SELECT id, email, first_name FROM users WHERE email = $1', [input.email]);
+    const user = result.rows[0];
+    if (user) await sendPasswordResetEmail({ id: user.id, email: user.email, firstName: user.first_name });
+  } finally { await client.end(); }
+  response.status(202).json({ data: { message: 'If that email belongs to an account, a reset link is on its way.' } });
+}));
+
+authRouter.post('/reset-password', asyncRoute(async (request, response) => {
+  const input = resetPasswordSchema.parse(request.body);
+  const passwordHash = await bcrypt.hash(input.password, 12);
+  const consumed = await consumeActionToken(input.token, 'PASSWORD_RESET', async (userId, client) => {
+    await client.query('UPDATE user_credentials SET password_hash = $2, password_changed_at = now(), updated_at = now() WHERE user_id = $1', [userId, passwordHash]);
+  });
+  if (!consumed) throw new ApiError(400, 'That password-reset link is invalid or has expired. Request a new one.', 'INVALID_ACTION_TOKEN');
+  response.json({ data: { message: 'Password updated. You can now sign in.' } });
+}));
+
+authRouter.post('/verify-email', asyncRoute(async (request, response) => {
+  const input = actionTokenSchema.parse(request.body);
+  const consumed = await consumeActionToken(input.token, 'EMAIL_VERIFICATION', async (userId, client) => {
+    await client.query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1', [userId]);
+  });
+  if (!consumed) throw new ApiError(400, 'That verification link is invalid or has expired. Sign in to request a new one.', 'INVALID_ACTION_TOKEN');
+  response.json({ data: { message: 'Your email is verified.' } });
 }));
 
 authRouter.post('/login', asyncRoute(async (request, response) => {

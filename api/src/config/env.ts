@@ -14,6 +14,10 @@ const envSchema = z.object({
   CLOUDINARY_CLOUD_NAME: z.string().trim().min(1).optional(),
   CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
   CLOUDINARY_API_SECRET: z.string().trim().min(1).optional(),
+  BREVO_API_KEY: z.string().trim().min(1).optional(),
+  BREVO_SENDER_EMAIL: z.string().email().optional(),
+  BREVO_SENDER_NAME: z.string().trim().min(1).max(100).optional(),
+  APP_URL: z.string().url().optional(),
 });
 
 export const env = envSchema.parse(process.env);

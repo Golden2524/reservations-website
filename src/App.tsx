@@ -15,6 +15,7 @@ import MyReservations from './MyReservations'
 import HostPortal from './HostPortal'
 import AdminReviewPortal from './AdminReviewPortal'
 import TrustCenter from './TrustCenter'
+import AccountEmailAction, { getAccountEmailAction } from './AccountEmailAction'
 
 export type Space = { name: string; kind: string; place: string; price: number; image: string; photos?: string[]; status: string; seats: string; slug?: string; maxGuests?: number }
 
@@ -49,6 +50,7 @@ export default function App() {
   const [hostPortalOpen, setHostPortalOpen] = useState(false)
   const [adminPortalOpen, setAdminPortalOpen] = useState(false)
   const [trustOpen, setTrustOpen] = useState(false)
+  const [emailAction, setEmailAction] = useState(() => getAccountEmailAction())
   const [account, setAccount] = useState<{ accessToken: string; user: { firstName: string; lastName: string; email: string; role: string } } | null>(() => {
     try { return JSON.parse(sessionStorage.getItem('reserveflow.account') ?? 'null') } catch { return null }
   })
@@ -132,11 +134,12 @@ export default function App() {
       <footer><div className="shell footer-inner"><a className="brand" href="#top"><span className="brand-mark"><i /><i /><i /></span>reserveflow<span className="dot">.</span></a><p>Make space for what matters.</p><button className="footer-trust" onClick={() => setTrustOpen(true)}>Trust & support</button><span>© 2026 ReserveFlow</span></div></footer>
 
       {notice && <div className="app-notice" role="status"><Check size={15}/>{notice}<button aria-label="Dismiss notification" onClick={() => setNotice('')}>×</button></div>}
-      {accountOpen && <AccountDialog initialMode={accountMode} onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready.`) }} />}
+      {accountOpen && <AccountDialog initialMode={accountMode} onClose={() => setAccountOpen(false)} onAuthenticated={(nextAccount) => { setAccount(nextAccount); setAccountOpen(false); setNotice(`Welcome, ${nextAccount.user.firstName}. Your guest account is ready. Check your email to verify your address.`) }} />}
       {reservationsOpen && account && <MyReservations account={account} onClose={() => setReservationsOpen(false)} onSignOut={signOut} />}
       {hostPortalOpen && account && <HostPortal account={account} onClose={() => setHostPortalOpen(false)} onAccountChanged={() => { setHostPortalOpen(false); setAccountMode('login'); setAccountOpen(true) }} />}
       {adminPortalOpen && account?.user.role === 'ADMIN' && <AdminReviewPortal account={account} onClose={() => setAdminPortalOpen(false)} />}
       {trustOpen && <TrustCenter onClose={() => setTrustOpen(false)} />}
+      {emailAction && <AccountEmailAction action={emailAction} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setEmailAction(null) }} />}
       <PaymentReturn account={account} onSignInRequired={() => { setAccountMode('login'); setAccountOpen(true) }} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setNotice('Payment status check closed. You can view your reservation from your account shortly.') }} />
       {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
     </main>
