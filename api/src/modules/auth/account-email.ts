@@ -6,15 +6,16 @@ import { createDatabaseClient } from '../../db/client.js';
 type ActionPurpose = 'EMAIL_VERIFICATION' | 'PASSWORD_RESET';
 const tokenHash = (token: string) => createHash('sha256').update(token).digest('hex');
 const configured = () => Boolean(env.BREVO_API_KEY && env.BREVO_SENDER_EMAIL && env.BREVO_SENDER_NAME && env.APP_URL);
-const escapeHtml = (value: string) => value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]!));
 
-async function sendEmail(to: string, subject: string, htmlContent: string) {
+async function sendEmail(to: string, subject: string, textContent: string) {
   if (!configured()) { console.warn('Transactional email skipped: Brevo or APP_URL is not configured.'); return false; }
   try {
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: { 'api-key': env.BREVO_API_KEY!, 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({ sender: { email: env.BREVO_SENDER_EMAIL!, name: env.BREVO_SENDER_NAME! }, to: [{ email: to }], subject, htmlContent }),
+      // Security links are intentionally plain text. This keeps Brevo's click
+      // tracker out of the reset/verification path and preserves the exact URL.
+      body: JSON.stringify({ sender: { email: env.BREVO_SENDER_EMAIL!, name: env.BREVO_SENDER_NAME! }, to: [{ email: to }], subject, textContent }),
     });
     if (!response.ok) { console.error({ status: response.status, detail: await response.text() }, 'Brevo transactional email failed'); return false; }
     return true;
@@ -36,12 +37,12 @@ const actionLink = (parameter: string, token: string) => `${env.APP_URL}?${param
 
 export async function sendVerificationEmail(user: { id: string; email: string; firstName: string }) {
   const token = await issue(user.id, 'EMAIL_VERIFICATION');
-  return sendEmail(user.email, 'Verify your ReserveFlow email', `<p>Hi ${escapeHtml(user.firstName)},</p><p>Confirm your email to protect your ReserveFlow account.</p><p><a href="${actionLink('verifyEmail', token)}">Verify my email</a></p><p>This link expires in 30 minutes. If you did not create this account, ignore this email.</p>`);
+  return sendEmail(user.email, 'Verify your ReserveFlow email', `Hi ${user.firstName},\n\nConfirm your email to protect your ReserveFlow account:\n${actionLink('verifyEmail', token)}\n\nThis link expires in 30 minutes. If you did not create this account, ignore this email.`);
 }
 
 export async function sendPasswordResetEmail(user: { id: string; email: string; firstName: string }) {
   const token = await issue(user.id, 'PASSWORD_RESET');
-  return sendEmail(user.email, 'Reset your ReserveFlow password', `<p>Hi ${escapeHtml(user.firstName)},</p><p>We received a request to reset your ReserveFlow password.</p><p><a href="${actionLink('resetPassword', token)}">Reset my password</a></p><p>This link expires in 30 minutes. If you did not request it, ignore this email.</p>`);
+  return sendEmail(user.email, 'Reset your ReserveFlow password', `Hi ${user.firstName},\n\nWe received a request to reset your ReserveFlow password:\n${actionLink('resetPassword', token)}\n\nThis link expires in 30 minutes. If you did not request it, ignore this email.`);
 }
 
 export async function consumeActionToken(token: string, purpose: ActionPurpose, action: (userId: string, client: Client) => Promise<void>) {
