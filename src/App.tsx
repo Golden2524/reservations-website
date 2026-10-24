@@ -15,7 +15,7 @@ import MyReservations from './MyReservations'
 import HostPortal from './HostPortal'
 import AdminReviewPortal from './AdminReviewPortal'
 
-export type Space = { name: string; kind: string; place: string; price: number; image: string; status: string; seats: string; slug?: string; maxGuests?: number }
+export type Space = { name: string; kind: string; place: string; price: number; image: string; photos?: string[]; status: string; seats: string; slug?: string; maxGuests?: number }
 
 const spaces: Space[] = [
   { name: 'The Glasshouse', kind: 'Boutique stay', place: 'Victoria Island, Lagos', price: 84000, image: 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85', status: 'Only 2 suites left', seats: '2 guests' },
@@ -29,7 +29,7 @@ const liveImages: Record<string, string> = {
   'maple-house-kuje': 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85',
   'green-haven-lodge': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
 }
-const asLiveSpace = (property: Property): Space => ({ name: property.name, kind: 'Kuje accommodation', place: `${property.area}, ${property.city}`, price: property.from_nightly_rate_naira, image: property.photo_urls?.[0] ?? liveImages[property.slug] ?? spaces[0].image, status: 'Live availability', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests })
+const asLiveSpace = (property: Property): Space => { const photos = property.photo_urls?.length ? property.photo_urls : [liveImages[property.slug] ?? spaces[0].image]; return { name: property.name, kind: 'Kuje accommodation', place: `${property.area}, ${property.city}`, price: property.from_nightly_rate_naira, image: photos[0], photos, status: 'Live availability', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests } }
 
 export default function App() {
   const [selectedDate, setSelectedDate] = useState(1)
