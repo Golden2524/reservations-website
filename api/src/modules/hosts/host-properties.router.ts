@@ -35,6 +35,9 @@ const availabilityBlockSchema = z.object({
   endsOn: z.coerce.date(),
   reason: z.string().trim().min(2).max(250),
 });
+const photoUrlsSchema = z.object({
+  photoUrls: z.array(z.string().url().refine((value) => value.startsWith('https://'), 'Photo URLs must use HTTPS')).min(1).max(8),
+});
 
 const isoDate = (value: Date) => value.toISOString().slice(0, 10);
 
@@ -46,7 +49,7 @@ hostPropertiesRouter.get('/', asyncRoute(async (request, response) => {
   await client.connect();
   try {
     const result = await client.query(
-      `SELECT p.id, p.name, p.slug, p.status, p.area, p.city, p.created_at,
+      `SELECT p.id, p.name, p.slug, p.status, p.area, p.city, p.photo_urls, p.created_at,
         COUNT(u.id)::int AS unit_count
        FROM properties p
        JOIN host_profiles h ON h.user_id = p.host_id
@@ -60,6 +63,23 @@ hostPropertiesRouter.get('/', asyncRoute(async (request, response) => {
   } finally {
     await client.end();
   }
+}));
+
+hostPropertiesRouter.put('/:propertyId/photos', asyncRoute(async (request, response) => {
+  const propertyId = z.string().uuid().parse(request.params.propertyId);
+  const input = photoUrlsSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `UPDATE properties SET photo_urls = $3, updated_at = now()
+       WHERE id = $1 AND host_id = $2
+       RETURNING id, name, slug, status, photo_urls, updated_at`,
+      [propertyId, request.auth!.userId, input.photoUrls],
+    );
+    if (!result.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
+    response.json({ data: result.rows[0] });
+  } finally { await client.end(); }
 }));
 
 hostPropertiesRouter.post('/', asyncRoute(async (request, response) => {

@@ -11,6 +11,9 @@ const envSchema = z.object({
   PAYMENT_WEBHOOK_SECRET: z.string().min(1).optional(),
   PAYSTACK_SECRET_KEY: z.string().min(1).optional(),
   PAYSTACK_CALLBACK_URL: z.string().url().optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().trim().min(1).optional(),
+  CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
+  CLOUDINARY_API_SECRET: z.string().trim().min(1).optional(),
 });
 
 export const env = envSchema.parse(process.env);

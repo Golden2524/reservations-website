@@ -6,6 +6,7 @@ import { hostPropertiesRouter } from '../modules/hosts/host-properties.router.js
 import { propertiesRouter } from '../modules/properties/properties.router.js';
 import { paymentsRouter } from '../modules/payments/payments.router.js';
 import { reservationsRouter } from '../modules/reservations/reservations.router.js';
+import { uploadsRouter } from '../modules/uploads/uploads.router.js';
 import { healthRouter } from './health.js';
 
 export const apiRouter = Router();
@@ -18,3 +19,4 @@ apiRouter.use('/host/properties', hostPropertiesRouter);
 apiRouter.use('/properties', propertiesRouter);
 apiRouter.use('/payments', paymentsRouter);
 apiRouter.use('/reservations', reservationsRouter);
+apiRouter.use('/uploads', uploadsRouter);
