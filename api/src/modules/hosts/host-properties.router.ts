@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
 import { z } from 'zod';
 import { requireAuth } from '../../auth/require-auth.js';
@@ -186,19 +187,59 @@ hostPropertiesRouter.post('/:propertyId/availability-blocks', asyncRoute(async (
   const client = createDatabaseClient();
   await client.connect();
   try {
+    const groupId = randomUUID();
     const result = await client.query(
       `WITH owned_units AS MATERIALIZED (
          SELECT u.id FROM units u JOIN properties p ON p.id = u.property_id
          WHERE p.id = $1 AND p.host_id = $5 FOR UPDATE
        )
-       INSERT INTO availability_blocks (unit_id, starts_on, ends_on, reason, created_by)
-       SELECT id, $2::date, $3::date, $4, $5 FROM owned_units
-       RETURNING id, unit_id, starts_on, ends_on, reason`,
-      [propertyId, isoDate(input.startsOn), isoDate(input.endsOn), input.reason, request.auth!.userId],
+       INSERT INTO availability_blocks (unit_id, starts_on, ends_on, reason, created_by, block_group_id)
+       SELECT id, $2::date, $3::date, $4, $5, $6 FROM owned_units
+       RETURNING id, unit_id, starts_on, ends_on, reason, block_group_id`,
+      [propertyId, isoDate(input.startsOn), isoDate(input.endsOn), input.reason, request.auth!.userId, groupId],
     );
     if (!result.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
     response.status(201).json({ data: result.rows, count: result.rowCount });
   } finally {
     await client.end();
   }
+}));
+
+hostPropertiesRouter.get('/:propertyId/availability-blocks', asyncRoute(async (request, response) => {
+  const propertyId = z.string().uuid().parse(request.params.propertyId);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT b.block_group_id, MIN(b.starts_on) AS starts_on, MAX(b.ends_on) AS ends_on,
+        MIN(b.reason) AS reason, MIN(b.created_at) AS created_at, COUNT(*)::int AS unit_count
+       FROM availability_blocks b
+       JOIN units u ON u.id = b.unit_id
+       JOIN properties p ON p.id = u.property_id
+       WHERE p.id = $1 AND p.host_id = $2
+       GROUP BY b.block_group_id
+       ORDER BY MIN(b.starts_on) ASC, MIN(b.created_at) DESC`,
+      [propertyId, request.auth!.userId],
+    );
+    response.json({ data: result.rows });
+  } finally { await client.end(); }
+}));
+
+hostPropertiesRouter.delete('/:propertyId/availability-blocks/:blockGroupId', asyncRoute(async (request, response) => {
+  const propertyId = z.string().uuid().parse(request.params.propertyId);
+  const blockGroupId = z.string().uuid().parse(request.params.blockGroupId);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `DELETE FROM availability_blocks b
+       USING units u, properties p
+       WHERE b.unit_id = u.id AND u.property_id = p.id
+         AND p.id = $1 AND p.host_id = $2 AND b.block_group_id = $3
+       RETURNING b.id`,
+      [propertyId, request.auth!.userId, blockGroupId],
+    );
+    if (!result.rowCount) throw new ApiError(404, 'Availability block not found.', 'AVAILABILITY_BLOCK_NOT_FOUND');
+    response.json({ data: { removed: result.rowCount } });
+  } finally { await client.end(); }
 }));

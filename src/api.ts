@@ -48,6 +48,7 @@ export type Account = { accessToken: string; user: { id?: string; firstName: str
 export type HostApplication = { id: string; status: 'SUBMITTED' | 'REJECTED' | 'APPROVED'; business_name: string; business_phone: string; notes?: string | null; review_note?: string | null; created_at: string; updated_at: string; reviewed_at?: string | null }
 export type HostProperty = { id: string; name: string; slug: string; status: string; area: string; city: string; photo_urls?: string[]; created_at: string; unit_count: number }
 export type HostReservation = { id: string; public_reference: string; check_in: string; check_out: string; guest_count: number; status: string; total_naira: number; created_at: string; unit_name: string; property_id: string; property_name: string; guest_first_name: string; guest_last_name: string; guest_email: string }
+export type HostAvailabilityBlock = { block_group_id: string; starts_on: string; ends_on: string; reason: string; created_at: string; unit_count: number }
 
 const bearer = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` })
 export const getMyHostApplication = (accessToken: string) => apiRequest<{ data: HostApplication | null }>('/host-applications/mine', { headers: bearer(accessToken) })
@@ -55,6 +56,8 @@ export const submitHostApplication = (accessToken: string, body: { businessName:
 export const getHostProperties = (accessToken: string) => apiRequest<{ data: HostProperty[] }>('/host/properties', { headers: bearer(accessToken) })
 export const getHostReservations = (accessToken: string) => apiRequest<{ data: HostReservation[] }>('/host/properties/reservations', { headers: bearer(accessToken) })
 export const createHostAvailabilityBlock = (accessToken: string, propertyId: string, body: { startsOn: string; endsOn: string; reason: string }) => apiRequest<{ data: { id: string }[]; count: number }>(`/host/properties/${propertyId}/availability-blocks`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify(body) })
+export const getHostAvailabilityBlocks = (accessToken: string, propertyId: string) => apiRequest<{ data: HostAvailabilityBlock[] }>(`/host/properties/${propertyId}/availability-blocks`, { headers: bearer(accessToken) })
+export const removeHostAvailabilityBlock = (accessToken: string, propertyId: string, blockGroupId: string) => apiRequest<{ data: { removed: number } }>(`/host/properties/${propertyId}/availability-blocks/${blockGroupId}`, { method: 'DELETE', headers: bearer(accessToken) })
 export const createHostProperty = (accessToken: string, body: Record<string, unknown>) => apiRequest<{ data: HostProperty }>('/host/properties', { method: 'POST', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify(body) })
 export const createHostUnit = (accessToken: string, propertyId: string, body: Record<string, unknown>) => apiRequest<{ data: { id: string } }>(`/host/properties/${propertyId}/units`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify(body) })
 export const submitHostProperty = (accessToken: string, propertyId: string) => apiRequest<{ data: HostProperty }>(`/host/properties/${propertyId}/submit`, { method: 'POST', headers: bearer(accessToken) })
