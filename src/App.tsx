@@ -57,6 +57,12 @@ export default function App() {
   const availability = useMemo(() => 34 - selectedDate * 3, [selectedDate])
 
   useEffect(() => {
+    if (!notice) return
+    const timeout = window.setTimeout(() => setNotice(''), 6500)
+    return () => window.clearTimeout(timeout)
+  }, [notice])
+
+  useEffect(() => {
     let active = true
     getApiHealth()
       .then(() => active && setApiStatus('live'))
