@@ -65,6 +65,28 @@ hostPropertiesRouter.get('/', asyncRoute(async (request, response) => {
   }
 }));
 
+hostPropertiesRouter.get('/reservations', asyncRoute(async (request, response) => {
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT r.id, r.public_reference, r.check_in, r.check_out, r.guest_count, r.status,
+        r.total_naira, r.created_at, u.name AS unit_name, p.id AS property_id,
+        p.name AS property_name, g.first_name AS guest_first_name, g.last_name AS guest_last_name,
+        g.email AS guest_email
+       FROM reservations r
+       JOIN units u ON u.id = r.unit_id
+       JOIN properties p ON p.id = u.property_id
+       JOIN users g ON g.id = r.guest_id
+       WHERE p.host_id = $1
+       ORDER BY CASE WHEN r.status IN ('CONFIRMED', 'PENDING_PAYMENT', 'HOLD') THEN 0 ELSE 1 END,
+         r.check_in ASC, r.created_at DESC`,
+      [request.auth!.userId],
+    );
+    response.json({ data: result.rows });
+  } finally { await client.end(); }
+}));
+
 hostPropertiesRouter.put('/:propertyId/photos', asyncRoute(async (request, response) => {
   const propertyId = z.string().uuid().parse(request.params.propertyId);
   const input = photoUrlsSchema.parse(request.body);
