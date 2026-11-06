@@ -9,9 +9,47 @@ import { asyncRoute } from '../../http/async-route.js';
 const applicationIdSchema = z.string().uuid();
 const propertyIdSchema = z.string().uuid();
 const reviewSchema = z.object({ reviewNote: z.string().trim().max(2000).optional() });
+const supportRequestIdSchema = z.string().uuid();
+const supportStatusSchema = z.object({
+  status: z.enum(['IN_PROGRESS', 'RESOLVED']),
+  internalNote: z.string().trim().min(2).max(2000).optional(),
+});
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('ADMIN'));
+
+adminRouter.get('/support-requests', asyncRoute(async (_request, response) => {
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT id, public_reference, name, email, topic, message, reservation_reference,
+        status, created_at, updated_at, handled_at, internal_note
+       FROM support_requests
+       WHERE status IN ('OPEN', 'IN_PROGRESS')
+       ORDER BY CASE status WHEN 'OPEN' THEN 0 ELSE 1 END, created_at ASC`,
+    );
+    response.json({ data: result.rows });
+  } finally { await client.end(); }
+}));
+
+adminRouter.patch('/support-requests/:supportRequestId', asyncRoute(async (request, response) => {
+  const supportRequestId = supportRequestIdSchema.parse(request.params.supportRequestId);
+  const input = supportStatusSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `UPDATE support_requests
+       SET status = $2, internal_note = $3, handled_by = $4, handled_at = now(), updated_at = now()
+       WHERE id = $1 AND status IN ('OPEN', 'IN_PROGRESS')
+       RETURNING id, public_reference, status, updated_at`,
+      [supportRequestId, input.status, input.internalNote ?? null, request.auth!.userId],
+    );
+    if (!result.rowCount) throw new ApiError(404, 'Support request not found or already resolved.', 'SUPPORT_REQUEST_NOT_FOUND');
+    response.json({ data: result.rows[0] });
+  } finally { await client.end(); }
+}));
 
 adminRouter.get('/host-applications', asyncRoute(async (_request, response) => {
   const client = createDatabaseClient();
