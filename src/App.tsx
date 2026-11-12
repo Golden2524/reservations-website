@@ -44,6 +44,8 @@ export default function App() {
   const [apiStatus, setApiStatus] = useState<'checking' | 'live' | 'offline'>('checking')
   const [liveSpaces, setLiveSpaces] = useState<Space[]>([])
   const [catalogueState, setCatalogueState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
+  const [locationQuery, setLocationQuery] = useState('Kuje')
+  const [activeLocation, setActiveLocation] = useState('Kuje')
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountMode, setAccountMode] = useState<'login' | 'register'>('register')
   const [reservationsOpen, setReservationsOpen] = useState(false)
@@ -72,11 +74,11 @@ export default function App() {
 
   useEffect(() => {
     let active = true
-    getProperties(guests)
+    getProperties(guests, activeLocation)
       .then((result) => { if (active) { setLiveSpaces(result.data.map(asLiveSpace)); setCatalogueState('ready') } })
       .catch(() => active && setCatalogueState('unavailable'))
     return () => { active = false }
-  }, [guests])
+  }, [guests, activeLocation])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
   const signOut = () => {
@@ -100,31 +102,32 @@ export default function App() {
         <h1>Make space for<br /><em>what matters.</em></h1>
         <p className="hero-copy">Exceptional stays, energising workspaces, and care you can count on — all in one thoughtful reservation experience.</p>
         <div className="booking-bar">
-          <div className="booking-field"><MapPin size={19} /><div><small>Where</small><strong>Lagos, Nigeria</strong></div><ChevronDown size={17} /></div>
+          <label className="booking-field location-search"><MapPin size={19} /><span><small>Where</small><input aria-label="Search by city or area" value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} placeholder="City or area" /></span></label>
           <div className="booking-field"><CalendarDays size={19} /><div><small>When</small><strong>14 — 16 October</strong></div><ChevronDown size={17} /></div>
           <div className="booking-field"><Users size={19} /><div><small>Guests</small><strong>{guests} guest{guests > 1 ? 's' : ''}</strong></div><span className="guest-stepper"><button onClick={() => setGuests(Math.max(1, guests - 1))}><Minus size={12}/></button><button onClick={() => setGuests(guests + 1)}><Plus size={12}/></button></span></div>
-          <button className="search-button" onClick={() => document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' })}><Search size={20} /> <span>Find a space</span></button>
+          <button className="search-button" onClick={() => { setActiveLocation(locationQuery); document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' }) }}><Search size={20} /> <span>Find a space</span></button>
         </div>
         <div className="hero-meta"><span><ShieldCheck size={16}/> Verified spaces & providers</span><span><Zap size={16}/> Instant confirmation</span><span><Heart size={16}/> Built around you</span></div>
         <div className="hero-visual">
           <div className="hero-photo"><img src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1800&q=85" alt="Modern home with a pool" /><div className="photo-tint" /></div>
           <div className="floating-card score-card"><span className="mini-icon"><Sparkles size={15}/></span><div><small>Guest favourite</small><strong>4.98 <span>★</span></strong></div></div>
           <div className="floating-card availability-card"><span className="live-dot"/><div><small>Live availability</small><strong>{availability} spaces open today</strong></div></div>
-          <div className="location-chip"><MapPin size={15}/> Curated for Lagos</div>
+          <div className="location-chip"><MapPin size={15}/> {activeLocation ? `Curated for ${activeLocation}` : 'Explore verified spaces'}</div>
         </div>
       </section>
 
       <section className="trust-band"><div className="shell trust-inner"><p>Trusted by people who value their time.</p><div><strong>12K<span>+</span></strong><small>happy bookers</small></div><div><strong>480<span>+</span></strong><small>remarkable spaces</small></div><div><strong>98<span>%</span></strong><small>would book again</small></div></div></section>
 
       <section id="explore" className="explore shell">
-        <div className="section-heading"><div><p className="kicker">LIVE KUJE DEMO CATALOGUE</p><h2>Find your perfect <em>place.</em></h2></div><a href="#all">Browse all spaces <ArrowRight size={18}/></a></div>
+        <div className="section-heading"><div><p className="kicker">LIVE VERIFIED CATALOGUE{activeLocation ? ` · ${activeLocation.toUpperCase()}` : ''}</p><h2>Find your perfect <em>place.</em></h2></div><a href="#top" onClick={() => document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' })}>Change location <ArrowRight size={18}/></a></div>
         <div className="date-strip"><button className="date-arrow">‹</button>{dates.map((date, index) => <button key={date} onClick={() => setSelectedDate(index)} className={selectedDate === index ? 'date active' : 'date'}>{date}</button>)}<button className="date-arrow">›</button></div>
         <div className="space-grid">
-          {(liveSpaces.length ? liveSpaces : spaces).map((space) => <article className="space-card" key={space.name}>
+          {(catalogueState === 'ready' ? liveSpaces : spaces).map((space) => <article className="space-card" key={space.name}>
             <div className="space-image"><img src={space.image} alt={space.name} /><span className="pill">{space.kind}</span><button aria-label={`${saved.includes(space.name) ? 'Remove' : 'Save'} ${space.name}`} className={saved.includes(space.name) ? 'save saved' : 'save'} onClick={() => { toggleSaved(space.name); setNotice(saved.includes(space.name) ? `${space.name} removed from saved spaces.` : `${space.name} saved for later.`) }}><Heart size={18} fill={saved.includes(space.name) ? 'currentColor' : 'none'} /></button><div className="image-status"><span className="live-dot"/>{space.status}</div></div>
             <div className="space-info"><p>{space.place}</p><h3>{space.name}</h3><div className="space-bottom"><span><strong>₦{space.price.toLocaleString()}</strong> <small>/ {space.slug ? 'night' : 'session'}</small></span><button onClick={() => space.slug ? setSelectedSpace(space) : setNotice(catalogueState === 'unavailable' ? 'Live catalogue is temporarily unavailable. Please try again shortly.' : 'This showcase card is not connected to checkout. Choose a live Kuje listing.')}>{space.slug ? <>Book now <ArrowRight size={16}/></> : 'Showcase only'}</button></div></div>
           </article>)}
         </div>
+        {catalogueState === 'ready' && liveSpaces.length === 0 && <div className="catalogue-empty"><MapPin size={19}/><div><strong>No verified accommodation is live in {activeLocation || 'this location'} yet.</strong><p>Try another city or area, or return soon as local partners are approved.</p></div></div>}
       </section>
 
       <Marketplace onReserve={() => setNotice('The marketplace cards are design showcases. Use a live Kuje listing above to test the reservation flow.')} />

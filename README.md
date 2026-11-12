@@ -1,11 +1,11 @@
 # ReserveFlow
 
-ReserveFlow is a Kuje-first multi-vendor accommodation marketplace for short-let apartments, guest houses, boutique stays, and serviced apartments. Its published frontend and API now support a controlled **Paystack test-mode** booking journey.
+ReserveFlow is a Kuje-first, city-searchable multi-vendor accommodation marketplace for short-let apartments, guest houses, boutique stays, and serviced apartments. Its published frontend and API now support a controlled **Paystack test-mode** booking journey.
 
 ## Current frontend experience
 
 - Responsive discovery landing page, mobile navigation, saved-space controls, and role demonstrations
-- Live Kuje catalogue read from the deployed PostgreSQL-backed API
+- Live verified catalogue read from the deployed PostgreSQL-backed API, with public search by city or area
 - Guest registration and sign-in, using server-issued short-lived bearer tokens
 - Real unit availability lookup, server-calculated pricing, and 15-minute reservation holds
 - Paystack test checkout redirect and webhook-backed post-payment status verification
