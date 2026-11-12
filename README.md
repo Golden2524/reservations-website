@@ -6,6 +6,7 @@ ReserveFlow is a Kuje-first, city-searchable multi-vendor accommodation marketpl
 
 - Responsive discovery landing page, mobile navigation, saved-space controls, and role demonstrations
 - Live verified catalogue read from the deployed PostgreSQL-backed API, with public search by city or area
+- Country-aware host location capture and catalogue filtering; checkout remains NGN-only until a multi-currency settlement phase is delivered
 - Guest registration and sign-in, using server-issued short-lived bearer tokens
 - Real unit availability lookup, server-calculated pricing, and 15-minute reservation holds
 - Paystack test checkout redirect and webhook-backed post-payment status verification

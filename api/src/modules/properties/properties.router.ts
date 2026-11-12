@@ -6,6 +6,7 @@ import { asyncRoute } from '../../http/async-route.js';
 const date = z.coerce.date().refine((value) => !Number.isNaN(value.getTime()), 'Invalid date');
 const searchSchema = z.object({
   area: z.string().trim().min(2).max(100).optional(),
+  country: z.string().trim().regex(/^[A-Za-z]{2}$/, 'country must use a two-letter code').optional(),
   checkIn: date.optional(),
   checkOut: date.optional(),
   guests: z.coerce.number().int().min(1).max(20).default(1),
@@ -39,7 +40,7 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
   try {
     const result = await client.query(
       `SELECT
-        p.id, p.slug, p.name, p.description, p.area, p.city, p.state, p.photo_urls,
+        p.id, p.slug, p.name, p.description, p.area, p.city, p.state, p.country_code, p.photo_urls,
         MIN(u.base_nightly_rate_naira) AS from_nightly_rate_naira,
         MAX(u.max_guests) AS maximum_guests
       FROM properties p
@@ -50,9 +51,10 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
           OR p.area ILIKE '%' || $1 || '%'
           OR p.city ILIKE '%' || $1 || '%'
         )
-        AND u.max_guests >= $2
+        AND ($2::text IS NULL OR p.country_code = $2)
+        AND u.max_guests >= $3
         AND (
-          $3::date IS NULL OR NOT EXISTS (
+          $4::date IS NULL OR NOT EXISTS (
             SELECT 1 FROM reservations r
             WHERE r.unit_id = u.id
               AND (
@@ -60,21 +62,22 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
                 OR (r.status = 'PENDING_PAYMENT' AND r.payment_expires_at > now())
                 OR r.status IN ('CONFIRMED', 'CHECKED_IN')
               )
-              AND r.stay && daterange($3::date, $4::date, '[)')
+              AND r.stay && daterange($4::date, $5::date, '[)')
           )
         )
         AND (
-          $3::date IS NULL OR NOT EXISTS (
+          $4::date IS NULL OR NOT EXISTS (
             SELECT 1 FROM availability_blocks b
             WHERE b.unit_id = u.id
-              AND daterange(b.starts_on, b.ends_on, '[)') && daterange($3::date, $4::date, '[)')
+              AND daterange(b.starts_on, b.ends_on, '[)') && daterange($4::date, $5::date, '[)')
           )
         )
       GROUP BY p.id
       ORDER BY from_nightly_rate_naira ASC, p.created_at DESC
-      LIMIT $5`,
+      LIMIT $6`,
       [
         query.area ?? null,
+        query.country?.toUpperCase() ?? null,
         query.guests,
         query.checkIn ? isoDate(query.checkIn) : null,
         query.checkOut ? isoDate(query.checkOut) : null,

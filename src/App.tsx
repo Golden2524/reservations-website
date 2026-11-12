@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight, Bell, CalendarDays, Check, ChevronDown, Clock3, Compass,
-  Heart, MapPin, Menu, Minus, Plus, Search, ShieldCheck, Sparkles,
+  Globe2, Heart, MapPin, Menu, Minus, Plus, Search, ShieldCheck, Sparkles,
   Users, Zap,
 } from 'lucide-react'
 import Dashboard, { type DashboardRole } from './Dashboard'
@@ -31,7 +31,8 @@ const liveImages: Record<string, string> = {
   'maple-house-kuje': 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85',
   'green-haven-lodge': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
 }
-const asLiveSpace = (property: Property): Space => { const photos = property.photo_urls?.length ? property.photo_urls : [liveImages[property.slug] ?? spaces[0].image]; return { name: property.name, kind: 'Kuje accommodation', place: `${property.area}, ${property.city}`, price: property.from_nightly_rate_naira, image: photos[0], photos, status: 'Live availability', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests } }
+const countryName = (code: string) => ({ NG: 'Nigeria', GH: 'Ghana', KE: 'Kenya', ZA: 'South Africa', RW: 'Rwanda', UG: 'Uganda', TZ: 'Tanzania', EG: 'Egypt', MA: 'Morocco', SN: 'Senegal' }[code] ?? code)
+const asLiveSpace = (property: Property): Space => { const photos = property.photo_urls?.length ? property.photo_urls : [liveImages[property.slug] ?? spaces[0].image]; return { name: property.name, kind: 'Accommodation', place: `${property.area}, ${property.city}, ${countryName(property.country_code)}`, price: property.from_nightly_rate_naira, image: photos[0], photos, status: 'Live availability', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests } }
 
 export default function App() {
   const [selectedDate, setSelectedDate] = useState(1)
@@ -46,6 +47,7 @@ export default function App() {
   const [catalogueState, setCatalogueState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [locationQuery, setLocationQuery] = useState('Kuje')
   const [activeLocation, setActiveLocation] = useState('Kuje')
+  const [countryCode, setCountryCode] = useState('NG')
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountMode, setAccountMode] = useState<'login' | 'register'>('register')
   const [reservationsOpen, setReservationsOpen] = useState(false)
@@ -74,11 +76,11 @@ export default function App() {
 
   useEffect(() => {
     let active = true
-    getProperties(guests, activeLocation)
+    getProperties(guests, activeLocation, countryCode)
       .then((result) => { if (active) { setLiveSpaces(result.data.map(asLiveSpace)); setCatalogueState('ready') } })
       .catch(() => active && setCatalogueState('unavailable'))
     return () => { active = false }
-  }, [guests, activeLocation])
+  }, [guests, activeLocation, countryCode])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
   const signOut = () => {
@@ -103,6 +105,7 @@ export default function App() {
         <p className="hero-copy">Exceptional stays, energising workspaces, and care you can count on — all in one thoughtful reservation experience.</p>
         <div className="booking-bar">
           <label className="booking-field location-search"><MapPin size={19} /><span><small>Where</small><input aria-label="Search by city or area" value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} placeholder="City or area" /></span></label>
+          <label className="booking-field country-search"><Globe2 size={18}/><span><small>Country</small><select aria-label="Choose country" value={countryCode} onChange={(event) => setCountryCode(event.target.value)}><option value="NG">Nigeria</option><option value="GH">Ghana</option><option value="KE">Kenya</option><option value="ZA">South Africa</option><option value="RW">Rwanda</option><option value="UG">Uganda</option><option value="TZ">Tanzania</option><option value="EG">Egypt</option><option value="MA">Morocco</option><option value="SN">Senegal</option></select></span></label>
           <div className="booking-field"><CalendarDays size={19} /><div><small>When</small><strong>14 — 16 October</strong></div><ChevronDown size={17} /></div>
           <div className="booking-field"><Users size={19} /><div><small>Guests</small><strong>{guests} guest{guests > 1 ? 's' : ''}</strong></div><span className="guest-stepper"><button onClick={() => setGuests(Math.max(1, guests - 1))}><Minus size={12}/></button><button onClick={() => setGuests(guests + 1)}><Plus size={12}/></button></span></div>
           <button className="search-button" onClick={() => { setActiveLocation(locationQuery); document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' }) }}><Search size={20} /> <span>Find a space</span></button>
@@ -112,7 +115,7 @@ export default function App() {
           <div className="hero-photo"><img src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1800&q=85" alt="Modern home with a pool" /><div className="photo-tint" /></div>
           <div className="floating-card score-card"><span className="mini-icon"><Sparkles size={15}/></span><div><small>Guest favourite</small><strong>4.98 <span>★</span></strong></div></div>
           <div className="floating-card availability-card"><span className="live-dot"/><div><small>Live availability</small><strong>{availability} spaces open today</strong></div></div>
-          <div className="location-chip"><MapPin size={15}/> {activeLocation ? `Curated for ${activeLocation}` : 'Explore verified spaces'}</div>
+          <div className="location-chip"><MapPin size={15}/> {activeLocation ? `${activeLocation}, ${countryName(countryCode)}` : `Explore ${countryName(countryCode)}`}</div>
         </div>
       </section>
 
