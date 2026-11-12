@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { requireAuth } from '../../auth/require-auth.js';
 import { requireRole } from '../../auth/require-role.js';
 import { createDatabaseClient } from '../../db/client.js';
+import { canTransitionReservation, type ReservationStatus } from '../../domain/reservation.js';
 import { ApiError } from '../../errors/api-error.js';
 import { asyncRoute } from '../../http/async-route.js';
 
@@ -86,6 +87,46 @@ hostPropertiesRouter.get('/reservations', asyncRoute(async (request, response) =
       [request.auth!.userId],
     );
     response.json({ data: result.rows });
+  } finally { await client.end(); }
+}));
+
+hostPropertiesRouter.post('/reservations/:reservationId/:action', asyncRoute(async (request, response) => {
+  const reservationId = z.string().uuid().parse(request.params.reservationId);
+  const action = z.enum(['check-in', 'complete']).parse(request.params.action);
+  const nextStatus: ReservationStatus = action === 'check-in' ? 'CHECKED_IN' : 'COMPLETED';
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    const reservation = await client.query<{ status: ReservationStatus; public_reference: string }>(
+      `SELECT r.status, r.public_reference
+       FROM reservations r
+       JOIN units u ON u.id = r.unit_id
+       JOIN properties p ON p.id = u.property_id
+       WHERE r.id = $1 AND p.host_id = $2
+       FOR UPDATE`,
+      [reservationId, request.auth!.userId],
+    );
+    if (!reservation.rowCount) throw new ApiError(404, 'Reservation not found for this host.', 'HOST_RESERVATION_NOT_FOUND');
+    const current = reservation.rows[0].status;
+    if (!canTransitionReservation(current, nextStatus)) {
+      throw new ApiError(409, `This reservation cannot move from ${current} to ${nextStatus}.`, 'INVALID_RESERVATION_TRANSITION');
+    }
+    const updated = await client.query(
+      `UPDATE reservations SET status = $2, updated_at = now() WHERE id = $1
+       RETURNING id, public_reference, status, updated_at`,
+      [reservationId, nextStatus],
+    );
+    await client.query(
+      `INSERT INTO reservation_events (reservation_id, actor_id, event_type, metadata)
+       VALUES ($1, $2, $3, jsonb_build_object('fromStatus', $4, 'toStatus', $5))`,
+      [reservationId, request.auth!.userId, action === 'check-in' ? 'GUEST_CHECKED_IN_BY_HOST' : 'STAY_COMPLETED_BY_HOST', current, nextStatus],
+    );
+    await client.query('COMMIT');
+    response.json({ data: updated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally { await client.end(); }
 }));
 
