@@ -3,6 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { createDatabaseClient } from '../../db/client.js';
 import { asyncRoute } from '../../http/async-route.js';
+import { rateLimit } from '../../http/rate-limit.js';
 
 const requestSchema = z.object({
   name: z.string().trim().min(2).max(160),
@@ -13,7 +14,7 @@ const requestSchema = z.object({
 });
 
 export const supportRouter = Router();
-supportRouter.post('/requests', asyncRoute(async (request, response) => {
+supportRouter.post('/requests', rateLimit({ namespace: 'support-request', maxRequests: 5, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
   const input = requestSchema.parse(request.body);
   const reference = `RF-SUP-${randomUUID().replaceAll('-', '').slice(0, 9).toUpperCase()}`;
   const client = createDatabaseClient();

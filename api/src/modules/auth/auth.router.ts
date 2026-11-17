@@ -6,6 +6,7 @@ import { signAccessToken } from '../../auth/tokens.js';
 import { createDatabaseClient } from '../../db/client.js';
 import { ApiError } from '../../errors/api-error.js';
 import { asyncRoute } from '../../http/async-route.js';
+import { rateLimit } from '../../http/rate-limit.js';
 import { consumeActionToken, sendPasswordResetEmail, sendVerificationEmail } from './account-email.js';
 
 const password = z.string().min(12).max(128)
@@ -47,7 +48,7 @@ const toAccountResponse = async (user: {
 
 export const authRouter = Router();
 
-authRouter.post('/register', asyncRoute(async (request, response) => {
+authRouter.post('/register', rateLimit({ namespace: 'auth-register', maxRequests: 5, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
   const input = registerSchema.parse(request.body);
   const client = createDatabaseClient();
   await client.connect();
@@ -81,7 +82,7 @@ authRouter.post('/register', asyncRoute(async (request, response) => {
   }
 }));
 
-authRouter.post('/request-password-reset', asyncRoute(async (request, response) => {
+authRouter.post('/request-password-reset', rateLimit({ namespace: 'auth-password-reset', maxRequests: 3, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
   const input = emailSchema.parse(request.body);
   const client = createDatabaseClient();
   await client.connect();
@@ -93,7 +94,7 @@ authRouter.post('/request-password-reset', asyncRoute(async (request, response) 
   response.status(202).json({ data: { message: 'If that email belongs to an account, a reset link is on its way.' } });
 }));
 
-authRouter.post('/reset-password', asyncRoute(async (request, response) => {
+authRouter.post('/reset-password', rateLimit({ namespace: 'auth-reset-password', maxRequests: 5, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
   const input = resetPasswordSchema.parse(request.body);
   const passwordHash = await bcrypt.hash(input.password, 12);
   const consumed = await consumeActionToken(input.token, 'PASSWORD_RESET', async (userId, client) => {
@@ -103,7 +104,7 @@ authRouter.post('/reset-password', asyncRoute(async (request, response) => {
   response.json({ data: { message: 'Password updated. You can now sign in.' } });
 }));
 
-authRouter.post('/verify-email', asyncRoute(async (request, response) => {
+authRouter.post('/verify-email', rateLimit({ namespace: 'auth-verify-email', maxRequests: 10, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
   const input = actionTokenSchema.parse(request.body);
   const consumed = await consumeActionToken(input.token, 'EMAIL_VERIFICATION', async (userId, client) => {
     await client.query('UPDATE users SET email_verified_at = COALESCE(email_verified_at, now()), updated_at = now() WHERE id = $1', [userId]);
@@ -112,7 +113,7 @@ authRouter.post('/verify-email', asyncRoute(async (request, response) => {
   response.json({ data: { message: 'Your email is verified.' } });
 }));
 
-authRouter.post('/login', asyncRoute(async (request, response) => {
+authRouter.post('/login', rateLimit({ namespace: 'auth-login', maxRequests: 10, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
   const input = loginSchema.parse(request.body);
   const client = createDatabaseClient();
   await client.connect();

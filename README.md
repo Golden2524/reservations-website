@@ -11,6 +11,7 @@ ReserveFlow is a Kuje-first, city-searchable multi-vendor accommodation marketpl
 - Verified guest reviews: only the guest attached to a completed reservation can submit one review for that stay
 - Personal wallet foundation with immutable ledger entries and owner-issued ReserveFlow Credits; cash funding, transfers, withdrawals, and customer deposits remain locked until a licensed payment-provider and compliance phase is completed
 - ReserveFlow Credits can fully confirm a booking from the guest wallet; partial credit/cash splitting is deliberately deferred until the licensed cash-wallet and refund/reconciliation phase
+- Abuse protection on sensitive public routes: sign-up, sign-in, password actions, and support requests are rate-limited per source IP; replace this process-local guard with a shared Redis limiter before horizontally scaling the API
 - Real unit availability lookup, server-calculated pricing, and 15-minute reservation holds
 - Paystack test checkout redirect and webhook-backed post-payment status verification
 - A live guest reservation dashboard, showing only the signed-in guest's reservations
