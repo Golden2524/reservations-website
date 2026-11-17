@@ -17,9 +17,15 @@ const propertySchema = z.object({
   city: z.string().trim().min(2).max(100).default('Kuje'),
   state: z.string().trim().min(2).max(100).default('FCT Abuja'),
   countryCode: z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/, 'Use a two-letter country code such as NG').default('NG'),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
   photoUrls: z.array(z.string().url().refine((value) => value.startsWith('https://'), 'Photo URLs must use HTTPS')).min(1).max(8),
   checkInTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('14:00'),
   checkOutTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).default('11:00'),
+}).superRefine((value, context) => {
+  if ((value.latitude === undefined) !== (value.longitude === undefined)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: 'Latitude and longitude must be supplied together.', path: ['latitude'] });
+  }
 });
 
 const unitSchema = z.object({
@@ -154,12 +160,12 @@ hostPropertiesRouter.post('/', asyncRoute(async (request, response) => {
   try {
     const result = await client.query(
       `INSERT INTO properties (
-        host_id, name, slug, description, address_line_1, area, city, state, country_code, photo_urls, check_in_time, check_out_time
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::time, $12::time)
-      RETURNING id, name, slug, status, area, city, state, country_code, photo_urls, created_at`,
+        host_id, name, slug, description, address_line_1, area, city, state, country_code, latitude, longitude, photo_urls, check_in_time, check_out_time
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::time, $14::time)
+      RETURNING id, name, slug, status, area, city, state, country_code, latitude, longitude, photo_urls, created_at`,
       [
         request.auth!.userId, input.name, input.slug, input.description, input.addressLine1,
-        input.area, input.city, input.state, input.countryCode, input.photoUrls, input.checkInTime, input.checkOutTime,
+        input.area, input.city, input.state, input.countryCode, input.latitude ?? null, input.longitude ?? null, input.photoUrls, input.checkInTime, input.checkOutTime,
       ],
     );
     response.status(201).json({ data: result.rows[0] });

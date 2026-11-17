@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight, Bell, CalendarDays, Check, ChevronDown, Clock3, Compass,
-  Globe2, Heart, MapPin, Menu, Minus, Plus, Search, ShieldCheck, Sparkles,
+  Globe2, Heart, LocateFixed, MapPin, Menu, Minus, Plus, Search, ShieldCheck, Sparkles,
   Users, Zap,
 } from 'lucide-react'
 import Dashboard, { type DashboardRole } from './Dashboard'
@@ -33,6 +33,7 @@ const liveImages: Record<string, string> = {
   'green-haven-lodge': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
 }
 const countryName = (code: string) => ({ NG: 'Nigeria', GH: 'Ghana', KE: 'Kenya', ZA: 'South Africa', RW: 'Rwanda', UG: 'Uganda', TZ: 'Tanzania', EG: 'Egypt', MA: 'Morocco', SN: 'Senegal' }[code] ?? code)
+const countryFromTimeZone = () => ({ 'Africa/Lagos': 'NG', 'Africa/Accra': 'GH', 'Africa/Nairobi': 'KE', 'Africa/Johannesburg': 'ZA', 'Africa/Kigali': 'RW', 'Africa/Kampala': 'UG', 'Africa/Dar_es_Salaam': 'TZ', 'Africa/Cairo': 'EG', 'Africa/Casablanca': 'MA', 'Africa/Dakar': 'SN' }[Intl.DateTimeFormat().resolvedOptions().timeZone] ?? 'NG')
 const asLiveSpace = (property: Property): Space => { const photos = property.photo_urls?.length ? property.photo_urls : [liveImages[property.slug] ?? spaces[0].image]; const reviews = Number(property.review_count) || 0; const rating = Number(property.average_rating) || 0; return { name: property.name, kind: 'Accommodation', place: `${property.area}, ${property.city}, ${countryName(property.country_code)}`, price: property.from_nightly_rate_naira, image: photos[0], photos, status: reviews ? `${rating.toFixed(1)} ★ · ${reviews} verified review${reviews === 1 ? '' : 's'}` : 'New on ReserveFlow', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests } }
 
 export default function App() {
@@ -48,7 +49,8 @@ export default function App() {
   const [catalogueState, setCatalogueState] = useState<'loading' | 'ready' | 'unavailable'>('loading')
   const [locationQuery, setLocationQuery] = useState('Kuje')
   const [activeLocation, setActiveLocation] = useState('Kuje')
-  const [countryCode, setCountryCode] = useState('NG')
+  const [countryCode, setCountryCode] = useState(countryFromTimeZone)
+  const [nearbyLocation, setNearbyLocation] = useState<{ latitude: number; longitude: number } | null>(null)
   const [checkInQuery, setCheckInQuery] = useState(() => dateValue(2))
   const [checkOutQuery, setCheckOutQuery] = useState(() => dateValue(4))
   const [activeCheckIn, setActiveCheckIn] = useState(() => dateValue(2))
@@ -81,11 +83,11 @@ export default function App() {
 
   useEffect(() => {
     let active = true
-    getProperties(guests, activeLocation, countryCode, activeCheckIn, activeCheckOut)
+    getProperties(guests, nearbyLocation ? undefined : activeLocation, nearbyLocation ? undefined : countryCode, activeCheckIn, activeCheckOut, nearbyLocation ?? undefined)
       .then((result) => { if (active) { setLiveSpaces(result.data.map(asLiveSpace)); setCatalogueState('ready') } })
       .catch(() => active && setCatalogueState('unavailable'))
     return () => { active = false }
-  }, [guests, activeLocation, countryCode, activeCheckIn, activeCheckOut])
+  }, [guests, activeLocation, countryCode, activeCheckIn, activeCheckOut, nearbyLocation])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
   const signOut = () => {
@@ -95,8 +97,16 @@ export default function App() {
   }
   const searchCatalogue = () => {
     if (checkInQuery >= checkOutQuery) { setNotice('Choose a check-out date after your check-in date.'); return }
-    setActiveLocation(locationQuery); setActiveCheckIn(checkInQuery); setActiveCheckOut(checkOutQuery)
+    setNearbyLocation(null); setActiveLocation(locationQuery); setActiveCheckIn(checkInQuery); setActiveCheckOut(checkOutQuery)
     document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' })
+  }
+  const findNearby = () => {
+    if (!navigator.geolocation) { setNotice('This browser does not support location access. Search by city or area instead.'); return }
+    navigator.geolocation.getCurrentPosition((position) => {
+      setNearbyLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude })
+      setActiveCheckIn(checkInQuery); setActiveCheckOut(checkOutQuery)
+      document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' })
+    }, () => setNotice('We could not access your location. Allow location permission or search by city or area.'), { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 })
   }
 
   return (
@@ -115,24 +125,24 @@ export default function App() {
         <p className="hero-copy">Exceptional stays, energising workspaces, and care you can count on — all in one thoughtful reservation experience.</p>
         <div className="booking-bar">
           <label className="booking-field location-search"><MapPin size={19} /><span><small>Where</small><input aria-label="Search by city or area" value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} placeholder="City or area" /></span></label>
-          <label className="booking-field country-search"><Globe2 size={18}/><span><small>Country</small><select aria-label="Choose country" value={countryCode} onChange={(event) => setCountryCode(event.target.value)}><option value="NG">Nigeria</option><option value="GH">Ghana</option><option value="KE">Kenya</option><option value="ZA">South Africa</option><option value="RW">Rwanda</option><option value="UG">Uganda</option><option value="TZ">Tanzania</option><option value="EG">Egypt</option><option value="MA">Morocco</option><option value="SN">Senegal</option></select></span></label>
+          <label className="booking-field country-search"><Globe2 size={18}/><span><small>Country</small><select aria-label="Choose country" value={countryCode} onChange={(event) => { setCountryCode(event.target.value); setNearbyLocation(null) }}><option value="NG">Nigeria</option><option value="GH">Ghana</option><option value="KE">Kenya</option><option value="ZA">South Africa</option><option value="RW">Rwanda</option><option value="UG">Uganda</option><option value="TZ">Tanzania</option><option value="EG">Egypt</option><option value="MA">Morocco</option><option value="SN">Senegal</option></select></span></label>
           <label className="booking-field stay-search"><CalendarDays size={19} /><span><small>Check in</small><input aria-label="Check-in date" type="date" min={dateValue(1)} value={checkInQuery} onChange={(event) => setCheckInQuery(event.target.value)} /></span><span><small>Check out</small><input aria-label="Check-out date" type="date" min={checkInQuery} value={checkOutQuery} onChange={(event) => setCheckOutQuery(event.target.value)} /></span></label>
           <div className="booking-field"><Users size={19} /><div><small>Guests</small><strong>{guests} guest{guests > 1 ? 's' : ''}</strong></div><span className="guest-stepper"><button onClick={() => setGuests(Math.max(1, guests - 1))}><Minus size={12}/></button><button onClick={() => setGuests(guests + 1)}><Plus size={12}/></button></span></div>
-          <button className="search-button" onClick={searchCatalogue}><Search size={20} /> <span>Find a space</span></button>
+          <button className="nearby-button" onClick={findNearby} title="Use your device location"><LocateFixed size={17}/><span>Near me</span></button><button className="search-button" onClick={searchCatalogue}><Search size={20} /> <span>Find a space</span></button>
         </div>
         <div className="hero-meta"><span><ShieldCheck size={16}/> Verified spaces & providers</span><span><Zap size={16}/> Instant confirmation</span><span><Heart size={16}/> Built around you</span></div>
         <div className="hero-visual">
           <div className="hero-photo"><img src="https://images.unsplash.com/photo-1613490493576-7fde63acd811?auto=format&fit=crop&w=1800&q=85" alt="Modern home with a pool" /><div className="photo-tint" /></div>
           <div className="floating-card score-card"><span className="mini-icon"><Sparkles size={15}/></span><div><small>Guest favourite</small><strong>4.98 <span>★</span></strong></div></div>
           <div className="floating-card availability-card"><span className="live-dot"/><div><small>Live availability</small><strong>{availability} spaces open today</strong></div></div>
-          <div className="location-chip"><MapPin size={15}/> {activeLocation ? `${activeLocation}, ${countryName(countryCode)}` : `Explore ${countryName(countryCode)}`}</div>
+          <div className="location-chip"><MapPin size={15}/> {nearbyLocation ? 'Verified stays near you' : activeLocation ? `${activeLocation}, ${countryName(countryCode)}` : `Explore ${countryName(countryCode)}`}</div>
         </div>
       </section>
 
       <section className="trust-band"><div className="shell trust-inner"><p>Trusted by people who value their time.</p><div><strong>12K<span>+</span></strong><small>happy bookers</small></div><div><strong>480<span>+</span></strong><small>remarkable spaces</small></div><div><strong>98<span>%</span></strong><small>would book again</small></div></div></section>
 
       <section id="explore" className="explore shell">
-        <div className="section-heading"><div><p className="kicker">LIVE VERIFIED CATALOGUE{activeLocation ? ` · ${activeLocation.toUpperCase()}` : ''}</p><h2>Find your perfect <em>place.</em></h2><small className="catalogue-dates">Available for {activeCheckIn} to {activeCheckOut} · {guests} guest{guests > 1 ? 's' : ''}</small></div><a href="#top" onClick={() => document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' })}>Change search <ArrowRight size={18}/></a></div>
+        <div className="section-heading"><div><p className="kicker">LIVE VERIFIED CATALOGUE{nearbyLocation ? ' · NEAR YOU' : activeLocation ? ` · ${activeLocation.toUpperCase()}` : ''}</p><h2>Find your perfect <em>place.</em></h2><small className="catalogue-dates">Available for {activeCheckIn} to {activeCheckOut} · {guests} guest{guests > 1 ? 's' : ''}</small></div><a href="#top" onClick={() => document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' })}>Change search <ArrowRight size={18}/></a></div>
         <div className="date-strip"><button className="date-arrow">‹</button>{dates.map((date, index) => <button key={date} onClick={() => setSelectedDate(index)} className={selectedDate === index ? 'date active' : 'date'}>{date}</button>)}<button className="date-arrow">›</button></div>
         <div className="space-grid">
           {(catalogueState === 'ready' ? liveSpaces : spaces).map((space) => <article className="space-card" key={space.name}>
@@ -140,7 +150,7 @@ export default function App() {
             <div className="space-info"><p>{space.place}</p><h3>{space.name}</h3><div className="space-bottom"><span><strong>₦{space.price.toLocaleString()}</strong> <small>/ {space.slug ? 'night' : 'session'}</small></span><button onClick={() => space.slug ? setSelectedSpace(space) : setNotice(catalogueState === 'unavailable' ? 'Live catalogue is temporarily unavailable. Please try again shortly.' : 'This showcase card is not connected to checkout. Choose a live Kuje listing.')}>{space.slug ? <>Book now <ArrowRight size={16}/></> : 'Showcase only'}</button></div></div>
           </article>)}
         </div>
-        {catalogueState === 'ready' && liveSpaces.length === 0 && <div className="catalogue-empty"><MapPin size={19}/><div><strong>No verified accommodation is live in {activeLocation || 'this location'} yet.</strong><p>Try another city or area, or return soon as local partners are approved.</p></div></div>}
+        {catalogueState === 'ready' && liveSpaces.length === 0 && <div className="catalogue-empty"><MapPin size={19}/><div><strong>No verified accommodation is live {nearbyLocation ? 'within 35 km of your location' : `in ${activeLocation || 'this location'}`} yet.</strong><p>{nearbyLocation ? 'Try a wider city or area search while nearby partners add their exact map location.' : 'Try another city or area, or return soon as local partners are approved.'}</p></div></div>}
       </section>
 
       <Marketplace onReserve={() => setNotice('The marketplace cards are design showcases. Use a live Kuje listing above to test the reservation flow.')} />

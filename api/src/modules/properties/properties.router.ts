@@ -7,6 +7,9 @@ const date = z.coerce.date().refine((value) => !Number.isNaN(value.getTime()), '
 const searchSchema = z.object({
   area: z.string().trim().min(2).max(100).optional(),
   country: z.string().trim().regex(/^[A-Za-z]{2}$/, 'country must use a two-letter code').optional(),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  radiusKm: z.coerce.number().min(1).max(200).default(35),
   checkIn: date.optional(),
   checkOut: date.optional(),
   guests: z.coerce.number().int().min(1).max(20).default(1),
@@ -31,6 +34,10 @@ export const propertiesRouter = Router();
 
 propertiesRouter.get('/', asyncRoute(async (request, response) => {
   const query = searchSchema.parse(request.query);
+  if ((query.latitude === undefined) !== (query.longitude === undefined)) {
+    response.status(422).json({ error: 'latitude and longitude must be supplied together', code: 'INVALID_LOCATION' });
+    return;
+  }
   if (query.checkIn && query.checkOut && query.checkIn >= query.checkOut) {
     response.status(422).json({ error: 'checkOut must be after checkIn', code: 'INVALID_STAY_RANGE' });
     return;
@@ -56,6 +63,17 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
         )
         AND ($2::text IS NULL OR p.country_code = $2)
         AND u.max_guests >= $3
+        AND (
+          $7::numeric IS NULL
+          OR (
+            p.latitude IS NOT NULL AND p.longitude IS NOT NULL
+            AND 6371 * acos(LEAST(1, GREATEST(-1,
+              cos(radians($7::numeric)) * cos(radians(p.latitude))
+              * cos(radians(p.longitude) - radians($8::numeric))
+              + sin(radians($7::numeric)) * sin(radians(p.latitude))
+            ))) <= $9::numeric
+          )
+        )
         AND (
           $4::date IS NULL OR NOT EXISTS (
             SELECT 1 FROM reservations r
@@ -85,6 +103,9 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
         query.checkIn ? isoDate(query.checkIn) : null,
         query.checkOut ? isoDate(query.checkOut) : null,
         query.limit,
+        query.latitude ?? null,
+        query.longitude ?? null,
+        query.radiusKm,
       ],
     );
     response.json({ data: result.rows, count: result.rowCount });
