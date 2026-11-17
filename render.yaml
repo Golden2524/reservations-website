@@ -14,7 +14,7 @@ services:
       - key: NODE_ENV
         value: production
       - key: CLIENT_ORIGIN
-        value: https://golden2524.github.io
+        value: https://reserveflow-kuje.netlify.app,https://golden2524.github.io
       - key: DATABASE_URL
         sync: false
       - key: JWT_ACCESS_SECRET

@@ -45,7 +45,7 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-Once running, `GET /api/v1/health` confirms the service is available. Database, Redis, payment, and authentication integrations are added in the next backend milestones so no real booking data is accepted before it is safely persisted.
+Once running, `GET /api/v1/health` confirms the API process is alive. `GET /api/v1/health/readiness` confirms that both the API and its booking database are reachable; use this endpoint for external uptime monitoring before launch.
 
 ### Database migrations
 
@@ -137,6 +137,8 @@ Do not accept live payments until every item below is complete:
 5. Switch from `sk_test_...` to a Paystack live key only after business verification and settlement account configuration are complete.
 6. Add monitoring, error alerting, daily database backup/recovery checks, rate limiting, and a support operating procedure.
 7. Run a closed pilot with a small group of real Kuje hosts and guests before any 1,000-booking growth target.
+
+For a free, domain-independent monitoring starting point, configure an external HTTP monitor against `https://reserveflow-api-l7bs.onrender.com/api/v1/health/readiness`. It should expect HTTP `200` and alert you on any other response. Move the monitor to the custom API domain when one is introduced.
 
 ### Demo inventory
 
