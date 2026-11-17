@@ -157,11 +157,11 @@ adminRouter.post('/properties/:propertyId/approve', asyncRoute(async (request, r
   try {
     const result = await client.query(
       `UPDATE properties SET status = 'ACTIVE', updated_at = now()
-       WHERE id = $1 AND status = 'PENDING_REVIEW'
+       WHERE id = $1 AND status = 'PENDING_REVIEW' AND country_code = 'NG'
        RETURNING id, name, slug, status, updated_at`,
       [propertyId],
     );
-    if (!result.rowCount) throw new ApiError(404, 'Property is not awaiting approval.', 'PROPERTY_NOT_FOUND_FOR_REVIEW');
+    if (!result.rowCount) throw new ApiError(409, 'Property is not awaiting approval or its country is not enabled for public payments yet.', 'PROPERTY_NOT_READY_FOR_PUBLICATION');
     await client.query(
       `INSERT INTO property_review_events (property_id, actor_id, action, note)
        VALUES ($1, $2, 'APPROVED', $3)`,

@@ -198,6 +198,14 @@ hostPropertiesRouter.post('/:propertyId/submit', asyncRoute(async (request, resp
   const client = createDatabaseClient();
   await client.connect();
   try {
+    const property = await client.query<{ country_code: string }>(
+      `SELECT country_code FROM properties WHERE id = $1 AND host_id = $2`,
+      [propertyId, request.auth!.userId],
+    );
+    if (!property.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
+    if (property.rows[0].country_code !== 'NG') {
+      throw new ApiError(422, 'This location is saved for future expansion. ReserveFlow can publish Nigerian accommodation only until local currency and payment settlement are configured for this country.', 'COUNTRY_NOT_READY_FOR_PUBLICATION');
+    }
     const result = await client.query(
       `UPDATE properties p SET status = 'PENDING_REVIEW', updated_at = now()
        WHERE p.id = $1
