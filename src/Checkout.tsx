@@ -9,11 +9,11 @@ const dateValue = (offset: number) => { const day = new Date(); day.setDate(day.
 const addDays = (value: string, offset: number) => { const day = new Date(`${value}T00:00:00`); day.setDate(day.getDate() + offset); return day.toISOString().slice(0, 10) }
 const changeMonth = (month: string, offset: number) => { const date = new Date(`${month}-01T00:00:00`); date.setMonth(date.getMonth() + offset); return date.toISOString().slice(0, 7) }
 
-export default function Checkout({ space, initialGuests, account, onClose, onRequireAccount }: { space: Space; initialGuests: number; account: Account | null; onClose: () => void; onRequireAccount: () => void }) {
+export default function Checkout({ space, initialGuests, initialCheckIn, initialCheckOut, account, onClose, onRequireAccount }: { space: Space; initialGuests: number; initialCheckIn?: string; initialCheckOut?: string; account: Account | null; onClose: () => void; onRequireAccount: () => void }) {
   const [step, setStep] = useState<Step>('details')
   const [guests, setGuests] = useState(initialGuests)
-  const [checkIn, setCheckIn] = useState(dateValue(2))
-  const [checkOut, setCheckOut] = useState(dateValue(4))
+  const [checkIn, setCheckIn] = useState(initialCheckIn ?? dateValue(2))
+  const [checkOut, setCheckOut] = useState(initialCheckOut ?? dateValue(4))
   const [units, setUnits] = useState<Unit[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -22,7 +22,7 @@ export default function Checkout({ space, initialGuests, account, onClose, onReq
   const [paymentKey] = useState(() => crypto.randomUUID())
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [galleryIndex, setGalleryIndex] = useState(0)
-  const [calendarMonth, setCalendarMonth] = useState(() => dateValue(2).slice(0, 7))
+  const [calendarMonth, setCalendarMonth] = useState(() => (initialCheckIn ?? dateValue(2)).slice(0, 7))
   const [calendarDates, setCalendarDates] = useState<AvailabilityDate[]>([])
   const [calendarLoading, setCalendarLoading] = useState(false)
   const [dateTarget, setDateTarget] = useState<'checkIn' | 'checkOut'>('checkIn')

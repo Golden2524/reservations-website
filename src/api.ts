@@ -42,10 +42,12 @@ export type Property = { slug: string; name: string; description: string; area: 
 export type Unit = { id: string; name: string; unit_type: string; max_guests: number; base_nightly_rate_naira: number; cleaning_fee_naira: number }
 export type AvailabilityDate = { date: string; available_unit_count: number; total_unit_count: number }
 
-export const getProperties = (guests: number, area?: string, countryCode?: string) => {
+export const getProperties = (guests: number, area?: string, countryCode?: string, checkIn?: string, checkOut?: string) => {
   const query = new URLSearchParams({ guests: String(guests) })
   if (area?.trim()) query.set('area', area.trim())
   if (countryCode?.trim()) query.set('country', countryCode.trim().toUpperCase())
+  if (checkIn) query.set('checkIn', checkIn)
+  if (checkOut) query.set('checkOut', checkOut)
   return apiRequest<{ data: Property[] }>(`/properties?${query.toString()}`)
 }
 export const getAvailability = (slug: string, checkIn: string, checkOut: string, guests: number) => apiRequest<{ data: Unit[] }>(`/properties/${slug}/availability?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`)

@@ -26,6 +26,7 @@ const spaces: Space[] = [
 ]
 
 const dates = ['MON 14', 'TUE 15', 'WED 16', 'THU 17', 'FRI 18']
+const dateValue = (offset: number) => { const day = new Date(); day.setDate(day.getDate() + offset); return day.toISOString().slice(0, 10) }
 const liveImages: Record<string, string> = {
   'aso-view-courtyard': 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85',
   'maple-house-kuje': 'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?auto=format&fit=crop&w=1200&q=85',
@@ -48,6 +49,10 @@ export default function App() {
   const [locationQuery, setLocationQuery] = useState('Kuje')
   const [activeLocation, setActiveLocation] = useState('Kuje')
   const [countryCode, setCountryCode] = useState('NG')
+  const [checkInQuery, setCheckInQuery] = useState(() => dateValue(2))
+  const [checkOutQuery, setCheckOutQuery] = useState(() => dateValue(4))
+  const [activeCheckIn, setActiveCheckIn] = useState(() => dateValue(2))
+  const [activeCheckOut, setActiveCheckOut] = useState(() => dateValue(4))
   const [accountOpen, setAccountOpen] = useState(false)
   const [accountMode, setAccountMode] = useState<'login' | 'register'>('register')
   const [reservationsOpen, setReservationsOpen] = useState(false)
@@ -76,17 +81,22 @@ export default function App() {
 
   useEffect(() => {
     let active = true
-    getProperties(guests, activeLocation, countryCode)
+    getProperties(guests, activeLocation, countryCode, activeCheckIn, activeCheckOut)
       .then((result) => { if (active) { setLiveSpaces(result.data.map(asLiveSpace)); setCatalogueState('ready') } })
       .catch(() => active && setCatalogueState('unavailable'))
     return () => { active = false }
-  }, [guests, activeLocation, countryCode])
+  }, [guests, activeLocation, countryCode, activeCheckIn, activeCheckOut])
 
   const toggleSaved = (name: string) => setSaved((items) => items.includes(name) ? items.filter((item) => item !== name) : [...items, name])
   const signOut = () => {
     sessionStorage.removeItem('reserveflow.account')
     setAccount(null); setReservationsOpen(false); setHostPortalOpen(false); setAdminPortalOpen(false)
     setNotice('You have been signed out securely.')
+  }
+  const searchCatalogue = () => {
+    if (checkInQuery >= checkOutQuery) { setNotice('Choose a check-out date after your check-in date.'); return }
+    setActiveLocation(locationQuery); setActiveCheckIn(checkInQuery); setActiveCheckOut(checkOutQuery)
+    document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
@@ -106,9 +116,9 @@ export default function App() {
         <div className="booking-bar">
           <label className="booking-field location-search"><MapPin size={19} /><span><small>Where</small><input aria-label="Search by city or area" value={locationQuery} onChange={(event) => setLocationQuery(event.target.value)} placeholder="City or area" /></span></label>
           <label className="booking-field country-search"><Globe2 size={18}/><span><small>Country</small><select aria-label="Choose country" value={countryCode} onChange={(event) => setCountryCode(event.target.value)}><option value="NG">Nigeria</option><option value="GH">Ghana</option><option value="KE">Kenya</option><option value="ZA">South Africa</option><option value="RW">Rwanda</option><option value="UG">Uganda</option><option value="TZ">Tanzania</option><option value="EG">Egypt</option><option value="MA">Morocco</option><option value="SN">Senegal</option></select></span></label>
-          <div className="booking-field"><CalendarDays size={19} /><div><small>When</small><strong>14 — 16 October</strong></div><ChevronDown size={17} /></div>
+          <label className="booking-field stay-search"><CalendarDays size={19} /><span><small>Check in</small><input aria-label="Check-in date" type="date" min={dateValue(1)} value={checkInQuery} onChange={(event) => setCheckInQuery(event.target.value)} /></span><span><small>Check out</small><input aria-label="Check-out date" type="date" min={checkInQuery} value={checkOutQuery} onChange={(event) => setCheckOutQuery(event.target.value)} /></span></label>
           <div className="booking-field"><Users size={19} /><div><small>Guests</small><strong>{guests} guest{guests > 1 ? 's' : ''}</strong></div><span className="guest-stepper"><button onClick={() => setGuests(Math.max(1, guests - 1))}><Minus size={12}/></button><button onClick={() => setGuests(guests + 1)}><Plus size={12}/></button></span></div>
-          <button className="search-button" onClick={() => { setActiveLocation(locationQuery); document.getElementById('explore')?.scrollIntoView({ behavior: 'smooth' }) }}><Search size={20} /> <span>Find a space</span></button>
+          <button className="search-button" onClick={searchCatalogue}><Search size={20} /> <span>Find a space</span></button>
         </div>
         <div className="hero-meta"><span><ShieldCheck size={16}/> Verified spaces & providers</span><span><Zap size={16}/> Instant confirmation</span><span><Heart size={16}/> Built around you</span></div>
         <div className="hero-visual">
@@ -122,7 +132,7 @@ export default function App() {
       <section className="trust-band"><div className="shell trust-inner"><p>Trusted by people who value their time.</p><div><strong>12K<span>+</span></strong><small>happy bookers</small></div><div><strong>480<span>+</span></strong><small>remarkable spaces</small></div><div><strong>98<span>%</span></strong><small>would book again</small></div></div></section>
 
       <section id="explore" className="explore shell">
-        <div className="section-heading"><div><p className="kicker">LIVE VERIFIED CATALOGUE{activeLocation ? ` · ${activeLocation.toUpperCase()}` : ''}</p><h2>Find your perfect <em>place.</em></h2></div><a href="#top" onClick={() => document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' })}>Change location <ArrowRight size={18}/></a></div>
+        <div className="section-heading"><div><p className="kicker">LIVE VERIFIED CATALOGUE{activeLocation ? ` · ${activeLocation.toUpperCase()}` : ''}</p><h2>Find your perfect <em>place.</em></h2><small className="catalogue-dates">Available for {activeCheckIn} to {activeCheckOut} · {guests} guest{guests > 1 ? 's' : ''}</small></div><a href="#top" onClick={() => document.getElementById('top')?.scrollIntoView({ behavior: 'smooth' })}>Change search <ArrowRight size={18}/></a></div>
         <div className="date-strip"><button className="date-arrow">‹</button>{dates.map((date, index) => <button key={date} onClick={() => setSelectedDate(index)} className={selectedDate === index ? 'date active' : 'date'}>{date}</button>)}<button className="date-arrow">›</button></div>
         <div className="space-grid">
           {(catalogueState === 'ready' ? liveSpaces : spaces).map((space) => <article className="space-card" key={space.name}>
@@ -153,7 +163,7 @@ export default function App() {
       {trustOpen && <TrustCenter onClose={() => setTrustOpen(false)} />}
       {emailAction && <AccountEmailAction action={emailAction} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setEmailAction(null) }} />}
       <PaymentReturn account={account} onSignInRequired={() => { setAccountMode('login'); setAccountOpen(true) }} onClose={() => { window.history.replaceState({}, '', window.location.pathname); setNotice('Payment status check closed. You can view your reservation from your account shortly.') }} />
-      {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
+      {selectedSpace && <Checkout space={selectedSpace} initialGuests={guests} initialCheckIn={activeCheckIn} initialCheckOut={activeCheckOut} account={account} onClose={() => setSelectedSpace(null)} onRequireAccount={() => { setSelectedSpace(null); setAccountOpen(true); setNotice('Create or sign in to a guest account, then choose your stay again.') }} />}
     </main>
   )
 }
