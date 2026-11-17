@@ -14,6 +14,12 @@ const supportStatusSchema = z.object({
   status: z.enum(['IN_PROGRESS', 'RESOLVED']),
   internalNote: z.string().trim().min(2).max(2000).optional(),
 });
+const creditGrantSchema = z.object({
+  email: z.string().trim().email(),
+  amountNaira: z.coerce.number().int().min(100).max(1_000_000),
+  reason: z.string().trim().min(3).max(300),
+  idempotencyKey: z.string().trim().min(16).max(255),
+});
 
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('ADMIN'));
@@ -48,6 +54,38 @@ adminRouter.patch('/support-requests/:supportRequestId', asyncRoute(async (reque
     );
     if (!result.rowCount) throw new ApiError(404, 'Support request not found or already resolved.', 'SUPPORT_REQUEST_NOT_FOUND');
     response.json({ data: result.rows[0] });
+  } finally { await client.end(); }
+}));
+
+adminRouter.post('/wallet-credits/grant', asyncRoute(async (request, response) => {
+  const input = creditGrantSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    const recipient = await client.query<{ id: string; email: string }>(`SELECT id, email FROM users WHERE email = $1 FOR UPDATE`, [input.email]);
+    if (!recipient.rowCount) throw new ApiError(404, 'No ReserveFlow account exists for that email address.', 'WALLET_RECIPIENT_NOT_FOUND');
+    const replay = await client.query(`SELECT id FROM wallet_ledger_entries WHERE idempotency_key = $1`, [input.idempotencyKey]);
+    if (replay.rowCount) throw new ApiError(409, 'This credit grant has already been processed.', 'WALLET_CREDIT_REPLAY');
+    await client.query(`INSERT INTO wallet_accounts (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [recipient.rows[0].id]);
+    const account = await client.query<{ id: string; credits_balance_naira: number }>(
+      `SELECT id, credits_balance_naira FROM wallet_accounts WHERE user_id = $1 FOR UPDATE`, [recipient.rows[0].id],
+    );
+    await client.query(
+      `UPDATE wallet_accounts SET credits_balance_naira = credits_balance_naira + $2, updated_at = now() WHERE id = $1`,
+      [account.rows[0].id, input.amountNaira],
+    );
+    const entry = await client.query(
+      `INSERT INTO wallet_ledger_entries (wallet_account_id, balance_type, entry_type, amount_naira, reason, created_by, idempotency_key)
+       VALUES ($1, 'CREDITS', 'CREDIT_GRANT', $2, $3, $4, $5)
+       RETURNING id, amount_naira, reason, created_at`,
+      [account.rows[0].id, input.amountNaira, input.reason, request.auth!.userId, input.idempotencyKey],
+    );
+    await client.query('COMMIT');
+    response.status(201).json({ data: { recipient: recipient.rows[0].email, creditsBalanceNaira: account.rows[0].credits_balance_naira + input.amountNaira, entry: entry.rows[0] } });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally { await client.end(); }
 }));
 

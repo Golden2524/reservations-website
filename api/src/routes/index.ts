@@ -8,6 +8,7 @@ import { paymentsRouter } from '../modules/payments/payments.router.js';
 import { reservationsRouter } from '../modules/reservations/reservations.router.js';
 import { uploadsRouter } from '../modules/uploads/uploads.router.js';
 import { supportRouter } from '../modules/support/support.router.js';
+import { walletRouter } from '../modules/wallet/wallet.router.js';
 import { healthRouter } from './health.js';
 
 export const apiRouter = Router();
@@ -22,3 +23,4 @@ apiRouter.use('/payments', paymentsRouter);
 apiRouter.use('/reservations', reservationsRouter);
 apiRouter.use('/uploads', uploadsRouter);
 apiRouter.use('/support', supportRouter);
+apiRouter.use('/wallet', walletRouter);

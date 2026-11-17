@@ -9,6 +9,7 @@ ReserveFlow is a Kuje-first, city-searchable multi-vendor accommodation marketpl
 - Country-aware host location capture and catalogue filtering; checkout remains NGN-only, and server-side controls prevent non-Nigerian listings from being submitted or published until a multi-currency settlement phase is delivered
 - Guest registration and sign-in, using server-issued short-lived bearer tokens
 - Verified guest reviews: only the guest attached to a completed reservation can submit one review for that stay
+- Personal wallet foundation with immutable ledger entries and owner-issued ReserveFlow Credits; cash funding, transfers, withdrawals, and customer deposits remain locked until a licensed payment-provider and compliance phase is completed
 - Real unit availability lookup, server-calculated pricing, and 15-minute reservation holds
 - Paystack test checkout redirect and webhook-backed post-payment status verification
 - A live guest reservation dashboard, showing only the signed-in guest's reservations
