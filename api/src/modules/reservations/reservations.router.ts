@@ -29,6 +29,7 @@ reservationsRouter.get('/mine', asyncRoute(async (request, response) => {
     const result = await client.query(
       `SELECT r.id, r.public_reference, r.check_in, r.check_out, r.guest_count, r.status,
         r.total_naira, r.hold_expires_at, r.payment_expires_at, r.cancelled_at, r.cancellation_reason, r.created_at,
+        EXISTS (SELECT 1 FROM property_reviews pr WHERE pr.reservation_id = r.id) AS has_review,
         u.name AS unit_name, p.name AS property_name, p.slug AS property_slug, p.area, p.city
        FROM reservations r
        JOIN units u ON u.id = r.unit_id
@@ -45,6 +46,10 @@ reservationsRouter.get('/mine', asyncRoute(async (request, response) => {
 
 const cancelReservationSchema = z.object({
   reason: z.string().trim().min(3).max(500),
+});
+const createReviewSchema = z.object({
+  rating: z.coerce.number().int().min(1).max(5),
+  comment: z.string().trim().min(10).max(1200),
 });
 
 reservationsRouter.post('/:reservationId/cancel', asyncRoute(async (request, response) => {
@@ -78,6 +83,38 @@ reservationsRouter.post('/:reservationId/cancel', asyncRoute(async (request, res
   } finally {
     await client.end();
   }
+}));
+
+reservationsRouter.post('/:reservationId/review', asyncRoute(async (request, response) => {
+  const reservationId = z.string().uuid().parse(request.params.reservationId);
+  const input = createReviewSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `INSERT INTO property_reviews (property_id, reservation_id, guest_id, rating, comment)
+       SELECT p.id, r.id, r.guest_id, $3, $4
+       FROM reservations r
+       JOIN units u ON u.id = r.unit_id
+       JOIN properties p ON p.id = u.property_id
+       WHERE r.id = $1 AND r.guest_id = $2 AND r.status = 'COMPLETED'
+       ON CONFLICT (reservation_id) DO NOTHING
+       RETURNING id, property_id, reservation_id, rating, comment, created_at`,
+      [reservationId, request.auth!.userId, input.rating, input.comment],
+    );
+    if (!result.rowCount) throw new ApiError(409, 'Only completed stays can be reviewed once.', 'RESERVATION_NOT_REVIEWABLE');
+    await client.query(
+      `INSERT INTO reservation_events (reservation_id, actor_id, event_type, metadata)
+       VALUES ($1, $2, 'PROPERTY_REVIEW_SUBMITTED', jsonb_build_object('rating', $3))`,
+      [reservationId, request.auth!.userId, input.rating],
+    );
+    await client.query('COMMIT');
+    response.status(201).json({ data: result.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { await client.end(); }
 }));
 
 reservationsRouter.post('/', asyncRoute(async (request, response) => {

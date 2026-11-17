@@ -33,7 +33,7 @@ const liveImages: Record<string, string> = {
   'green-haven-lodge': 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85',
 }
 const countryName = (code: string) => ({ NG: 'Nigeria', GH: 'Ghana', KE: 'Kenya', ZA: 'South Africa', RW: 'Rwanda', UG: 'Uganda', TZ: 'Tanzania', EG: 'Egypt', MA: 'Morocco', SN: 'Senegal' }[code] ?? code)
-const asLiveSpace = (property: Property): Space => { const photos = property.photo_urls?.length ? property.photo_urls : [liveImages[property.slug] ?? spaces[0].image]; return { name: property.name, kind: 'Accommodation', place: `${property.area}, ${property.city}, ${countryName(property.country_code)}`, price: property.from_nightly_rate_naira, image: photos[0], photos, status: 'Live availability', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests } }
+const asLiveSpace = (property: Property): Space => { const photos = property.photo_urls?.length ? property.photo_urls : [liveImages[property.slug] ?? spaces[0].image]; const reviews = Number(property.review_count) || 0; const rating = Number(property.average_rating) || 0; return { name: property.name, kind: 'Accommodation', place: `${property.area}, ${property.city}, ${countryName(property.country_code)}`, price: property.from_nightly_rate_naira, image: photos[0], photos, status: reviews ? `${rating.toFixed(1)} ★ · ${reviews} verified review${reviews === 1 ? '' : 's'}` : 'New on ReserveFlow', seats: `Up to ${property.maximum_guests} guests`, slug: property.slug, maxGuests: property.maximum_guests } }
 
 export default function App() {
   const [selectedDate, setSelectedDate] = useState(1)

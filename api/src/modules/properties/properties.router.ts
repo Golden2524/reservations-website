@@ -23,6 +23,7 @@ const availabilityCalendarSchema = z.object({
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'month must use YYYY-MM format'),
   guests: z.coerce.number().int().min(1).max(20).default(1),
 });
+const reviewLimitSchema = z.object({ limit: z.coerce.number().int().min(1).max(50).default(12) });
 
 const isoDate = (value: Date) => value.toISOString().slice(0, 10);
 
@@ -41,6 +42,8 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
     const result = await client.query(
       `SELECT
         p.id, p.slug, p.name, p.description, p.area, p.city, p.state, p.country_code, p.photo_urls,
+        COALESCE((SELECT ROUND(AVG(pr.rating)::numeric, 1) FROM property_reviews pr WHERE pr.property_id = p.id), 0) AS average_rating,
+        (SELECT COUNT(*)::int FROM property_reviews pr WHERE pr.property_id = p.id) AS review_count,
         MIN(u.base_nightly_rate_naira) AS from_nightly_rate_naira,
         MAX(u.max_guests) AS maximum_guests
       FROM properties p
@@ -88,6 +91,25 @@ propertiesRouter.get('/', asyncRoute(async (request, response) => {
   } finally {
     await client.end();
   }
+}));
+
+propertiesRouter.get('/:slug/reviews', asyncRoute(async (request, response) => {
+  const query = reviewLimitSchema.parse(request.query);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT pr.rating, pr.comment, pr.created_at, u.first_name, LEFT(u.last_name, 1) AS last_initial
+       FROM property_reviews pr
+       JOIN properties p ON p.id = pr.property_id
+       JOIN users u ON u.id = pr.guest_id
+       WHERE p.slug = $1 AND p.status = 'ACTIVE'
+       ORDER BY pr.created_at DESC
+       LIMIT $2`,
+      [request.params.slug, query.limit],
+    );
+    response.json({ data: result.rows, count: result.rowCount });
+  } finally { await client.end(); }
 }));
 
 propertiesRouter.get('/:slug/availability', asyncRoute(async (request, response) => {

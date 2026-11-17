@@ -38,7 +38,7 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}): Promi
 
 export const getApiHealth = () => apiRequest<ApiHealth>('/health')
 
-export type Property = { slug: string; name: string; description: string; area: string; city: string; state: string; country_code: string; photo_urls?: string[]; from_nightly_rate_naira: number; maximum_guests: number }
+export type Property = { slug: string; name: string; description: string; area: string; city: string; state: string; country_code: string; photo_urls?: string[]; average_rating: number | string; review_count: number; from_nightly_rate_naira: number; maximum_guests: number }
 export type Unit = { id: string; name: string; unit_type: string; max_guests: number; base_nightly_rate_naira: number; cleaning_fee_naira: number }
 export type AvailabilityDate = { date: string; available_unit_count: number; total_unit_count: number }
 
