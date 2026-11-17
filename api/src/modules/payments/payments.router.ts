@@ -40,6 +40,71 @@ paymentsRouter.get('/:reference', asyncRoute(async (request, response) => {
   }
 }));
 
+paymentsRouter.post('/credits-checkout', asyncRoute(async (request, response) => {
+  const input = checkoutSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    const replay = await client.query<{ reservation_id: string; public_reference: string; credits_used_naira: number }>(
+      `SELECT r.id AS reservation_id, r.public_reference, -w.amount_naira AS credits_used_naira
+       FROM wallet_ledger_entries w
+       JOIN reservations r ON r.id = w.reservation_id
+       WHERE w.idempotency_key = $1
+         AND w.wallet_account_id = (SELECT id FROM wallet_accounts WHERE user_id = $2)
+         AND w.entry_type = 'BOOKING_REDEMPTION'`,
+      [input.idempotencyKey, request.auth!.userId],
+    );
+    if (replay.rowCount) {
+      if (replay.rows[0].reservation_id !== input.reservationId) {
+        throw new ApiError(409, 'This idempotency key belongs to a different reservation.', 'IDEMPOTENCY_KEY_REUSED');
+      }
+      await client.query('COMMIT');
+      response.json({ data: { publicReference: replay.rows[0].public_reference, creditsUsedNaira: replay.rows[0].credits_used_naira }, idempotentReplay: true });
+      return;
+    }
+    const reservation = await client.query<{ id: string; public_reference: string; total_naira: number }>(
+      `SELECT id, public_reference, total_naira FROM reservations
+       WHERE id = $1 AND guest_id = $2 AND status = 'HOLD' AND hold_expires_at > now()
+       FOR UPDATE`,
+      [input.reservationId, request.auth!.userId],
+    );
+    if (!reservation.rowCount) throw new ApiError(409, 'This reservation is not eligible for credit payment.', 'RESERVATION_NOT_PAYABLE');
+    const current = reservation.rows[0];
+    await client.query(`INSERT INTO wallet_accounts (user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING`, [request.auth!.userId]);
+    const wallet = await client.query<{ id: string; credits_balance_naira: number }>(
+      `SELECT id, credits_balance_naira FROM wallet_accounts WHERE user_id = $1 FOR UPDATE`,
+      [request.auth!.userId],
+    );
+    if (wallet.rows[0].credits_balance_naira < current.total_naira) {
+      throw new ApiError(422, 'Your ReserveFlow Credits do not fully cover this booking total.', 'INSUFFICIENT_BOOKING_CREDITS');
+    }
+    await client.query(
+      `UPDATE wallet_accounts SET credits_balance_naira = credits_balance_naira - $2, updated_at = now() WHERE id = $1`,
+      [wallet.rows[0].id, current.total_naira],
+    );
+    await client.query(
+      `INSERT INTO wallet_ledger_entries (wallet_account_id, reservation_id, balance_type, entry_type, amount_naira, reason, idempotency_key)
+       VALUES ($1, $2, 'CREDITS', 'BOOKING_REDEMPTION', $3, $4, $5)`,
+      [wallet.rows[0].id, current.id, -current.total_naira, `Full booking payment for ${current.public_reference}`, input.idempotencyKey],
+    );
+    await client.query(
+      `UPDATE reservations SET status = 'CONFIRMED', hold_expires_at = NULL, updated_at = now() WHERE id = $1`,
+      [current.id],
+    );
+    await client.query(
+      `INSERT INTO reservation_events (reservation_id, actor_id, event_type, metadata)
+       VALUES ($1, $2, 'RESERVATION_CONFIRMED_WITH_CREDITS', jsonb_build_object('creditsUsedNaira', $3))`,
+      [current.id, request.auth!.userId, current.total_naira],
+    );
+    await client.query('COMMIT');
+    response.status(201).json({ data: { publicReference: current.public_reference, creditsUsedNaira: current.total_naira }, idempotentReplay: false });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { await client.end(); }
+}));
+
 paymentsRouter.post('/checkout', asyncRoute(async (request, response) => {
   const input = checkoutSchema.parse(request.body);
   assertPaystackConfigured();
