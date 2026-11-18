@@ -15,12 +15,12 @@ ReserveFlow is a Kuje-first, city-searchable multi-vendor accommodation marketpl
 - Real unit availability lookup, server-calculated pricing, and 15-minute reservation holds
 - Paystack test checkout redirect and webhook-backed post-payment status verification
 - A live guest reservation dashboard, showing only the signed-in guest's reservations
-- GitHub Pages frontend deployment and Render API deployment
+- Netlify frontend deployment and Render API deployment
 
 ## Planned production architecture
 
 ```text
-GitHub Pages React client
+Netlify React client
         │ HTTPS / bearer token
         ▼
 Render Express + TypeScript API ──── Neon PostgreSQL
@@ -157,4 +157,4 @@ npm run dev
 npm run build
 ```
 
-The app uses a relative asset base, so its generated `dist` folder works on a GitHub Pages project site without a repository-name-specific configuration.
+The Netlify build publishes the generated `dist` folder and supports direct links through its SPA rewrite rule.
