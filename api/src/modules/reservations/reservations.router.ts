@@ -44,6 +44,30 @@ reservationsRouter.get('/mine', asyncRoute(async (request, response) => {
   }
 }));
 
+reservationsRouter.get('/:reservationId/timeline', asyncRoute(async (request, response) => {
+  const reservationId = z.string().uuid().parse(request.params.reservationId);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const reservation = await client.query<{ public_reference: string }>(
+      'SELECT public_reference FROM reservations WHERE id = $1 AND guest_id = $2',
+      [reservationId, request.auth!.userId],
+    );
+    if (!reservation.rowCount) throw new ApiError(404, 'Reservation not found for this guest.', 'RESERVATION_NOT_FOUND');
+
+    const events = await client.query(
+      `SELECT id, event_type, metadata, created_at
+       FROM reservation_events
+       WHERE reservation_id = $1
+       ORDER BY created_at ASC, id ASC`,
+      [reservationId],
+    );
+    response.json({ data: { publicReference: reservation.rows[0].public_reference, events: events.rows } });
+  } finally {
+    await client.end();
+  }
+}));
+
 const cancelReservationSchema = z.object({
   reason: z.string().trim().min(3).max(500),
 });
@@ -183,6 +207,11 @@ reservationsRouter.post('/', asyncRoute(async (request, response) => {
         publicReference(), input.unitId, request.auth!.userId, isoDate(input.checkIn), isoDate(input.checkOut),
         input.guestCount, nightlyRate, cleaningFee, serviceFee, total, input.idempotencyKey,
       ],
+    );
+    await client.query(
+      `INSERT INTO reservation_events (reservation_id, actor_id, event_type, metadata)
+       VALUES ($1, $2, 'RESERVATION_HOLD_CREATED', jsonb_build_object('checkIn', $3, 'checkOut', $4, 'guestCount', $5))`,
+      [result.rows[0].id, request.auth!.userId, isoDate(input.checkIn), isoDate(input.checkOut), input.guestCount],
     );
     await client.query('COMMIT');
     response.status(201).json({ data: result.rows[0], idempotentReplay: false });
