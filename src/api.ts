@@ -60,6 +60,7 @@ export type HostApplication = { id: string; status: 'SUBMITTED' | 'REJECTED' | '
 export type HostProperty = { id: string; name: string; slug: string; status: string; area: string; city: string; country_code: string; photo_urls?: string[]; created_at: string; unit_count: number }
 export type HostReservation = { id: string; public_reference: string; check_in: string; check_out: string; guest_count: number; status: string; total_naira: number; created_at: string; unit_name: string; property_id: string; property_name: string; guest_first_name: string; guest_last_name: string; guest_email: string }
 export type HostAvailabilityBlock = { block_group_id: string; starts_on: string; ends_on: string; reason: string; created_at: string; unit_count: number }
+export type HostListingDetails = { id: string; name: string; status: string; description: string; address_line_1: string; area: string; city: string; state: string; check_in_time: string; check_out_time: string; units: { id: string; name: string; unit_type: string; description?: string | null; max_guests: number; bedrooms: number; bathrooms: number | string; base_nightly_rate_naira: number; cleaning_fee_naira: number }[] }
 
 const bearer = (accessToken: string) => ({ Authorization: `Bearer ${accessToken}` })
 export const getMyHostApplication = (accessToken: string) => apiRequest<{ data: HostApplication | null }>('/host-applications/mine', { headers: bearer(accessToken) })
@@ -76,6 +77,8 @@ export const submitHostProperty = (accessToken: string, propertyId: string) => a
 export type UploadSignature = { cloudName: string; apiKey: string; timestamp: number; folder: string; signature: string }
 export const getPropertyImageUploadSignature = (accessToken: string) => apiRequest<{ data: UploadSignature }>('/uploads/property-image-signature', { method: 'POST', headers: bearer(accessToken) })
 export const updateHostPropertyPhotos = (accessToken: string, propertyId: string, photoUrls: string[]) => apiRequest<{ data: HostProperty }>(`/host/properties/${propertyId}/photos`, { method: 'PUT', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify({ photoUrls }) })
+export const getHostListingDetails = (accessToken: string, propertyId: string) => apiRequest<{ data: HostListingDetails }>(`/host/properties/${propertyId}/listing-details`, { headers: bearer(accessToken) })
+export const updateHostListingDetails = (accessToken: string, propertyId: string, body: Record<string, unknown>) => apiRequest<{ data: { id: string; name: string; status: string } }>(`/host/properties/${propertyId}/listing-details`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', ...bearer(accessToken) }, body: JSON.stringify(body) })
 export const submitSupportRequest = (body: { name: string; email: string; topic: string; message: string; reservationReference?: string }) => apiRequest<{ data: { reference: string } }>('/support/requests', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
 
 export type AdminHostApplication = { id: string; business_name: string; business_phone: string; notes?: string | null; status: string; created_at: string; applicant_id: string; email: string; first_name: string; last_name: string }

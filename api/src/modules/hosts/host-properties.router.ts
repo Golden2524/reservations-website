@@ -47,6 +47,26 @@ const availabilityBlockSchema = z.object({
 const photoUrlsSchema = z.object({
   photoUrls: z.array(z.string().url().refine((value) => value.startsWith('https://'), 'Photo URLs must use HTTPS')).min(1).max(8),
 });
+const listingUpdateSchema = z.object({
+  description: z.string().trim().min(40).max(5000),
+  addressLine1: z.string().trim().min(5).max(255),
+  area: z.string().trim().min(2).max(100),
+  city: z.string().trim().min(2).max(100),
+  state: z.string().trim().min(2).max(100),
+  checkInTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  checkOutTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
+  units: z.array(z.object({
+    id: z.string().uuid(),
+    name: z.string().trim().min(2).max(100),
+    unitType: z.string().trim().min(2).max(80),
+    description: z.string().trim().max(2000).nullable(),
+    maxGuests: z.coerce.number().int().min(1).max(20),
+    bedrooms: z.coerce.number().int().min(0).max(20),
+    bathrooms: z.coerce.number().min(0.5).max(20),
+    baseNightlyRateNaira: z.coerce.number().int().min(1000).max(10_000_000),
+    cleaningFeeNaira: z.coerce.number().int().min(0).max(2_000_000),
+  })).min(1).max(100),
+});
 
 const isoDate = (value: Date) => value.toISOString().slice(0, 10);
 
@@ -93,6 +113,78 @@ hostPropertiesRouter.get('/reservations', asyncRoute(async (request, response) =
       [request.auth!.userId],
     );
     response.json({ data: result.rows });
+  } finally { await client.end(); }
+}));
+
+hostPropertiesRouter.get('/:propertyId/listing-details', asyncRoute(async (request, response) => {
+  const propertyId = z.string().uuid().parse(request.params.propertyId);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const property = await client.query(
+      `SELECT id, name, status, description, address_line_1, area, city, state,
+        check_in_time::text AS check_in_time, check_out_time::text AS check_out_time
+       FROM properties WHERE id = $1 AND host_id = $2`,
+      [propertyId, request.auth!.userId],
+    );
+    if (!property.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
+    const units = await client.query(
+      `SELECT id, name, unit_type, description, max_guests, bedrooms, bathrooms,
+        base_nightly_rate_naira, cleaning_fee_naira
+       FROM units WHERE property_id = $1 AND status = 'ACTIVE' ORDER BY created_at ASC`,
+      [propertyId],
+    );
+    response.json({ data: { ...property.rows[0], units: units.rows } });
+  } finally { await client.end(); }
+}));
+
+hostPropertiesRouter.patch('/:propertyId/listing-details', asyncRoute(async (request, response) => {
+  const propertyId = z.string().uuid().parse(request.params.propertyId);
+  const input = listingUpdateSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    await client.query('BEGIN');
+    const property = await client.query<{ status: string; name: string }>(
+      `SELECT status, name FROM properties WHERE id = $1 AND host_id = $2 FOR UPDATE`,
+      [propertyId, request.auth!.userId],
+    );
+    if (!property.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
+    if (property.rows[0].status === 'SUSPENDED') throw new ApiError(409, 'A suspended listing can only be reactivated by ReserveFlow after review.', 'PROPERTY_SUSPENDED');
+    const ids = input.units.map((unit) => unit.id);
+    const ownedUnits = await client.query<{ id: string }>(
+      `SELECT id FROM units WHERE property_id = $1 AND id = ANY($2::uuid[]) AND status = 'ACTIVE' FOR UPDATE`,
+      [propertyId, ids],
+    );
+    if (ownedUnits.rowCount !== input.units.length) throw new ApiError(409, 'One or more units cannot be updated.', 'UNIT_UPDATE_NOT_ALLOWED');
+    const nextStatus = property.rows[0].status === 'ACTIVE' ? 'PENDING_REVIEW' : property.rows[0].status;
+    await client.query(
+      `UPDATE properties
+       SET description = $3, address_line_1 = $4, area = $5, city = $6, state = $7,
+         check_in_time = $8::time, check_out_time = $9::time, status = $10::property_status, updated_at = now()
+       WHERE id = $1 AND host_id = $2`,
+      [propertyId, request.auth!.userId, input.description, input.addressLine1, input.area, input.city, input.state, input.checkInTime, input.checkOutTime, nextStatus],
+    );
+    for (const unit of input.units) {
+      await client.query(
+        `UPDATE units SET name = $3, unit_type = $4, description = $5, max_guests = $6, bedrooms = $7,
+          bathrooms = $8, base_nightly_rate_naira = $9, cleaning_fee_naira = $10, updated_at = now()
+         WHERE id = $1 AND property_id = $2`,
+        [unit.id, propertyId, unit.name, unit.unitType, unit.description, unit.maxGuests, unit.bedrooms, unit.bathrooms, unit.baseNightlyRateNaira, unit.cleaningFeeNaira],
+      );
+    }
+    if (property.rows[0].status === 'ACTIVE') {
+      await client.query(
+        `INSERT INTO property_review_events (property_id, actor_id, action, note)
+         VALUES ($1, $2, 'HOST_LISTING_UPDATE_SUBMITTED', 'Host updated listing details or pricing; approval required before public discovery resumes.')`,
+        [propertyId, request.auth!.userId],
+      );
+    }
+    await client.query('COMMIT');
+    response.json({ data: { id: propertyId, name: property.rows[0].name, status: nextStatus } });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
   } finally { await client.end(); }
 }));
 
