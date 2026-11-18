@@ -24,6 +24,27 @@ const creditGrantSchema = z.object({
 export const adminRouter = Router();
 adminRouter.use(requireAuth, requireRole('ADMIN'));
 
+adminRouter.get('/overview', asyncRoute(async (_request, response) => {
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query<{
+      active_properties: number; pending_host_applications: number; pending_property_reviews: number;
+      open_support_cases: number; confirmed_bookings: number; bookings_last_30_days: number; confirmed_booking_value_naira: string;
+    }>(
+      `SELECT
+        (SELECT COUNT(*)::int FROM properties WHERE status = 'ACTIVE') AS active_properties,
+        (SELECT COUNT(*)::int FROM host_applications WHERE status IN ('SUBMITTED', 'UNDER_REVIEW')) AS pending_host_applications,
+        (SELECT COUNT(*)::int FROM properties WHERE status = 'PENDING_REVIEW') AS pending_property_reviews,
+        (SELECT COUNT(*)::int FROM support_requests WHERE status IN ('OPEN', 'IN_PROGRESS')) AS open_support_cases,
+        (SELECT COUNT(*)::int FROM reservations WHERE status IN ('CONFIRMED', 'CHECKED_IN', 'COMPLETED')) AS confirmed_bookings,
+        (SELECT COUNT(*)::int FROM reservations WHERE created_at >= now() - interval '30 days') AS bookings_last_30_days,
+        (SELECT COALESCE(SUM(total_naira), 0)::bigint FROM reservations WHERE status IN ('CONFIRMED', 'CHECKED_IN', 'COMPLETED')) AS confirmed_booking_value_naira`,
+    );
+    response.json({ data: result.rows[0] });
+  } finally { await client.end(); }
+}));
+
 adminRouter.get('/support-requests', asyncRoute(async (_request, response) => {
   const client = createDatabaseClient();
   await client.connect();
