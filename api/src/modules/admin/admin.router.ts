@@ -208,6 +208,27 @@ adminRouter.get('/properties/review', asyncRoute(async (_request, response) => {
   }
 }));
 
+adminRouter.get('/properties/active', asyncRoute(async (_request, response) => {
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query(
+      `SELECT p.id, p.name, p.slug, p.area, p.city, p.state, p.updated_at,
+        h.business_name, u.email AS host_email, COUNT(DISTINCT un.id)::int AS unit_count,
+        COUNT(DISTINCT r.id) FILTER (WHERE r.status IN ('CONFIRMED', 'CHECKED_IN', 'COMPLETED'))::int AS confirmed_reservation_count
+       FROM properties p
+       JOIN host_profiles h ON h.user_id = p.host_id
+       JOIN users u ON u.id = p.host_id
+       LEFT JOIN units un ON un.property_id = p.id AND un.status = 'ACTIVE'
+       LEFT JOIN reservations r ON r.unit_id = un.id
+       WHERE p.status = 'ACTIVE'
+       GROUP BY p.id, h.business_name, u.email
+       ORDER BY p.updated_at DESC`,
+    );
+    response.json({ data: result.rows });
+  } finally { await client.end(); }
+}));
+
 adminRouter.post('/properties/:propertyId/approve', asyncRoute(async (request, response) => {
   const propertyId = propertyIdSchema.parse(request.params.propertyId);
   const input = reviewSchema.parse(request.body);
