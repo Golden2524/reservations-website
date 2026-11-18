@@ -250,6 +250,27 @@ adminRouter.get('/properties/suspended', asyncRoute(async (_request, response) =
   } finally { await client.end(); }
 }));
 
+adminRouter.get('/properties/:propertyId/history', asyncRoute(async (request, response) => {
+  const propertyId = propertyIdSchema.parse(request.params.propertyId);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const property = await client.query<{ name: string }>('SELECT name FROM properties WHERE id = $1', [propertyId]);
+    if (!property.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
+    const events = await client.query(
+      `SELECT e.id, e.action, e.note, e.created_at,
+        u.first_name, u.last_name, u.email AS actor_email
+       FROM property_review_events e
+       LEFT JOIN users u ON u.id = e.actor_id
+       WHERE e.property_id = $1
+       ORDER BY e.created_at DESC
+       LIMIT 50`,
+      [propertyId],
+    );
+    response.json({ data: { propertyName: property.rows[0].name, events: events.rows } });
+  } finally { await client.end(); }
+}));
+
 adminRouter.post('/properties/:propertyId/approve', asyncRoute(async (request, response) => {
   const propertyId = propertyIdSchema.parse(request.params.propertyId);
   const input = reviewSchema.parse(request.body);
