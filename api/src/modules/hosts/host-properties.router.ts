@@ -272,23 +272,37 @@ hostPropertiesRouter.post('/:propertyId/units', asyncRoute(async (request, respo
   const client = createDatabaseClient();
   await client.connect();
   try {
+    await client.query('BEGIN');
+    const property = await client.query<{ status: string }>(
+      `SELECT status FROM properties WHERE id = $1 AND host_id = $2 FOR UPDATE`,
+      [propertyId, request.auth!.userId],
+    );
+    if (!property.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
+    if (property.rows[0].status === 'SUSPENDED') throw new ApiError(409, 'A suspended listing cannot receive new units until ReserveFlow reactivates it.', 'PROPERTY_SUSPENDED');
     const result = await client.query(
       `INSERT INTO units (
         property_id, name, unit_type, description, max_guests, bedrooms, bathrooms,
         base_nightly_rate_naira, cleaning_fee_naira
-      ) SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
-        WHERE EXISTS (SELECT 1 FROM properties WHERE id = $1 AND host_id = $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING id, property_id, name, unit_type, max_guests, base_nightly_rate_naira, cleaning_fee_naira, status`,
-      [
-        propertyId, input.name, input.unitType, input.description ?? null, input.maxGuests, input.bedrooms,
-        input.bathrooms, input.baseNightlyRateNaira, input.cleaningFeeNaira, request.auth!.userId,
-      ],
+      [propertyId, input.name, input.unitType, input.description ?? null, input.maxGuests, input.bedrooms, input.bathrooms, input.baseNightlyRateNaira, input.cleaningFeeNaira],
     );
-    if (!result.rowCount) throw new ApiError(404, 'Property not found.', 'PROPERTY_NOT_FOUND');
-    response.status(201).json({ data: result.rows[0] });
-  } finally {
-    await client.end();
-  }
+    let listingStatus = property.rows[0].status;
+    if (listingStatus === 'ACTIVE') {
+      listingStatus = 'PENDING_REVIEW';
+      await client.query(`UPDATE properties SET status = 'PENDING_REVIEW', updated_at = now() WHERE id = $1`, [propertyId]);
+      await client.query(
+        `INSERT INTO property_review_events (property_id, actor_id, action, note)
+         VALUES ($1, $2, 'HOST_UNIT_ADDED_SUBMITTED', 'Host added new inventory; approval required before public discovery resumes.')`,
+        [propertyId, request.auth!.userId],
+      );
+    }
+    await client.query('COMMIT');
+    response.status(201).json({ data: { ...result.rows[0], listingStatus } });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally { await client.end(); }
 }));
 
 hostPropertiesRouter.post('/:propertyId/submit', asyncRoute(async (request, response) => {
