@@ -94,6 +94,21 @@ authRouter.post('/request-password-reset', rateLimit({ namespace: 'auth-password
   response.status(202).json({ data: { message: 'If that email belongs to an account, a reset link is on its way.' } });
 }));
 
+authRouter.post('/resend-verification', rateLimit({ namespace: 'auth-resend-verification', maxRequests: 3, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
+  const input = emailSchema.parse(request.body);
+  const client = createDatabaseClient();
+  await client.connect();
+  try {
+    const result = await client.query<{ id: string; email: string; first_name: string }>(
+      'SELECT id, email, first_name FROM users WHERE email = $1 AND email_verified_at IS NULL',
+      [input.email],
+    );
+    const user = result.rows[0];
+    if (user) await sendVerificationEmail({ id: user.id, email: user.email, firstName: user.first_name });
+  } finally { await client.end(); }
+  response.status(202).json({ data: { message: 'If that address has an unverified ReserveFlow account, a verification link is on its way.' } });
+}));
+
 authRouter.post('/reset-password', rateLimit({ namespace: 'auth-reset-password', maxRequests: 5, windowMs: 15 * 60_000 }), asyncRoute(async (request, response) => {
   const input = resetPasswordSchema.parse(request.body);
   const passwordHash = await bcrypt.hash(input.password, 12);
