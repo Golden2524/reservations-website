@@ -196,19 +196,29 @@ hostPropertiesRouter.post('/reservations/:reservationId/:action', asyncRoute(asy
   await client.connect();
   try {
     await client.query('BEGIN');
-    const reservation = await client.query<{ status: ReservationStatus; public_reference: string }>(
-      `SELECT r.status, r.public_reference
+    const reservation = await client.query<{ status: ReservationStatus; public_reference: string; timing_allowed: boolean }>(
+      `SELECT r.status, r.public_reference,
+        CASE
+          WHEN $3 = 'check-in' THEN r.check_in <= (now() AT TIME ZONE 'Africa/Lagos')::date
+          ELSE r.check_out <= (now() AT TIME ZONE 'Africa/Lagos')::date
+        END AS timing_allowed
        FROM reservations r
        JOIN units u ON u.id = r.unit_id
        JOIN properties p ON p.id = u.property_id
        WHERE r.id = $1 AND p.host_id = $2
        FOR UPDATE`,
-      [reservationId, request.auth!.userId],
+      [reservationId, request.auth!.userId, action],
     );
     if (!reservation.rowCount) throw new ApiError(404, 'Reservation not found for this host.', 'HOST_RESERVATION_NOT_FOUND');
     const current = reservation.rows[0].status;
     if (!canTransitionReservation(current, nextStatus)) {
       throw new ApiError(409, `This reservation cannot move from ${current} to ${nextStatus}.`, 'INVALID_RESERVATION_TRANSITION');
+    }
+    if (!reservation.rows[0].timing_allowed) {
+      const message = action === 'check-in'
+        ? 'A guest can only be checked in on or after the scheduled arrival date.'
+        : 'A stay can only be completed on or after the scheduled checkout date.';
+      throw new ApiError(409, message, 'RESERVATION_DATE_NOT_REACHED');
     }
     const updated = await client.query(
       `UPDATE reservations SET status = $2, updated_at = now() WHERE id = $1

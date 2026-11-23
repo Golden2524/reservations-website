@@ -96,6 +96,8 @@ Hosts submit a draft property through `POST /api/v1/host/properties/:propertyId/
 
 Every approval and suspension is recorded in `property_review_events`, preserving the reviewer and decision note for operational auditability.
 
+Host stay operations also enforce the booked dates: a confirmed guest cannot be checked in before the property’s scheduled arrival date, and a checked-in stay cannot be completed before its checkout date. These checks use the operational `Africa/Lagos` calendar rather than relying on a browser clock.
+
 ### Payments
 
 `POST /api/v1/payments/checkout` starts a Paystack payment for the signed-in guest's unexpired reservation hold. Charges are calculated only on the server and sent to Paystack in kobo. The endpoint has an idempotency key, so retries reuse the same payment record and provider reference rather than creating a second charge attempt.
