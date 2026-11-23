@@ -49,6 +49,7 @@ Never put provider secrets, database URLs, API keys, or email credentials in Net
 1. Upgrade Render from the free plan to an always-on plan.
 2. Run `npm run reservations:expire` on a scheduled worker every minute so stale payment attempts are released even with no visitor traffic.
 3. Configure external monitoring for `/api/v1/health/readiness`, error alerts, and a tested database-backup/recovery process.
+   Every API response includes an `X-Request-Id`; ask a guest for this value when investigating an error and use it to find the related structured API log entry.
 4. Replace the test Paystack secret with a live secret only after Paystack business verification and settlement-account setup are completed.
 5. Have a qualified Nigerian legal adviser approve the Terms, Privacy, cancellation/refund policy, host agreement, and data-handling procedures.
 6. Use a shared Redis-backed limiter before running more than one API instance; the current limiter is intentionally process-local.
