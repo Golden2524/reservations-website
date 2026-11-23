@@ -36,8 +36,8 @@ export default function AccountDialog({ onClose, onAuthenticated, initialMode = 
   return <div className="account-backdrop" onMouseDown={onClose}><section className="account-dialog" onMouseDown={(event) => event.stopPropagation()} aria-label="Account access">
     <button className="account-close" onClick={onClose} aria-label="Close account dialog"><X size={18}/></button>
     <p className="kicker">{mode === 'register' ? 'WELCOME TO RESERVEFLOW' : mode === 'recovery' ? 'ACCOUNT RECOVERY' : mode === 'verify' ? 'VERIFY YOUR EMAIL' : 'WELCOME BACK'}</p>
-    <h2>{mode === 'register' ? 'Book with confidence.' : mode === 'recovery' ? 'Reset with confidence.' : mode === 'verify' ? 'Protect your account.' : 'Continue your journey.'}</h2>
-    <p className="account-copy">{mode === 'register' ? 'Create a guest account to hold availability and securely pay for a stay.' : mode === 'recovery' ? 'Enter your account email and we will send a secure password-reset link if it exists.' : mode === 'verify' ? 'Enter your account email and we will send a fresh verification link if it is still needed.' : 'Sign in to see your reservations and complete your booking.'}</p>
+    <h2>{mode === 'register' ? 'Create your guest account.' : mode === 'recovery' ? 'Reset your password.' : mode === 'verify' ? 'Verify your email address.' : 'Sign in to ReserveFlow.'}</h2>
+    <p className="account-copy">{mode === 'register' ? 'Use one account to hold dates, manage reservations, and complete secure checkout.' : mode === 'recovery' ? 'Enter your account email. If it is registered, we will send a secure password-reset link.' : mode === 'verify' ? 'Enter your account email. If verification is still required, we will send a new link.' : 'Sign in to view reservations, payment status, and booking support.'}</p>
     <form onSubmit={submit}>
       {mode === 'register' && <div className="account-row"><label>First name<input name="firstName" required autoComplete="given-name" /></label><label>Last name<input name="lastName" required autoComplete="family-name" /></label></div>}
       <label>Email address<input name="email" type="email" required autoComplete="email" /></label>

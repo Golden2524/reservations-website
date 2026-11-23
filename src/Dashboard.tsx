@@ -5,9 +5,9 @@ export type DashboardRole = 'guest' | 'partner' | 'admin'
 type View = { eyebrow: string; title: string; user: string; initials: string; userRole: string; cards: [string, string, string][] }
 
 const views: Record<DashboardRole, View> = {
-  guest: { eyebrow: 'GUEST EXPERIENCE', title: 'Your plans, beautifully in sync.', user: 'Amara Mensah', initials: 'AM', userRole: 'Member since 2024', cards: [['UPCOMING', '02', 'reservations confirmed'], ['SAVED', '08', 'places for later'], ['REWARDS', '2,480', 'points available']] },
-  partner: { eyebrow: 'PARTNER WORKSPACE', title: 'Your space, working smarter.', user: 'Glasshouse Lagos', initials: 'GS', userRole: 'Partner account', cards: [['TODAY’S BOOKINGS', '14', '3 arriving soon'], ['OCCUPANCY', '82%', '+12% vs last week'], ['OCTOBER REVENUE', '₦4.8m', '+18.4% this month']] },
-  admin: { eyebrow: 'PLATFORM OPERATIONS', title: 'The marketplace, at a glance.', user: 'ReserveFlow Ops', initials: 'RF', userRole: 'Super administrator', cards: [['ACTIVE BOOKINGS', '1,284', '+8.2% today'], ['PENDING REVIEW', '09', 'requires attention'], ['PLATFORM GMV', '₦86.4m', 'this month']] },
+  guest: { eyebrow: 'GUEST ACCOUNT PREVIEW', title: 'Your reservation details.', user: 'Guest account', initials: 'GA', userRole: 'Account workspace', cards: [['RESERVATIONS', '—', 'view booking status'], ['SAVED STAYS', '—', 'keep options for later'], ['PAYMENTS', '—', 'track verified payments']] },
+  partner: { eyebrow: 'HOST WORKSPACE PREVIEW', title: 'Manage your property.', user: 'Host account', initials: 'HA', userRole: 'Property operations', cards: [['ARRIVALS', '—', 'review upcoming stays'], ['AVAILABILITY', '—', 'manage blocked dates'], ['LISTINGS', '—', 'submit changes for review']] },
+  admin: { eyebrow: 'OWNER WORKSPACE PREVIEW', title: 'Monitor platform activity.', user: 'ReserveFlow owner', initials: 'RF', userRole: 'Protected operations', cards: [['BOOKINGS', '—', 'review live status'], ['LISTING REVIEW', '—', 'approve partner updates'], ['SUPPORT', '—', 'manage open cases']] },
 }
 
 export default function Dashboard({ role }: { role: DashboardRole }) {
