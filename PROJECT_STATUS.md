@@ -15,6 +15,7 @@
 - Cloudinary image uploads, public policies/support centre, abuse limits on sensitive public routes, and API/database readiness checks
 - Reservation state-machine controls, including arrival/checkout date safeguards for host actions
 - Request correlation IDs in API headers, errors, and structured logs for support investigation
+- GitHub Actions quality gate that builds the frontend and builds/tests the API on every push and pull request
 
 ## Still intentionally restricted
 
