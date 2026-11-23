@@ -1,5 +1,7 @@
 # ReserveFlow
 
+Project progress and remaining launch dependencies are tracked in [PROJECT_STATUS.md](./PROJECT_STATUS.md). For the architecture and booking-integrity model, see [docs/architecture.md](./docs/architecture.md).
+
 ReserveFlow is a Kuje-first, city-searchable multi-vendor accommodation marketplace for short-let apartments, guest houses, boutique stays, and serviced apartments. Its published frontend and API now support a controlled **Paystack test-mode** booking journey.
 
 ## Current frontend experience
