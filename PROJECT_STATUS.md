@@ -49,3 +49,5 @@ The project can be described as **launch-ready** only after all of these are com
 6. A small closed Kuje pilot has successfully exercised booking, payment, cancellation, support, host check-in, and property suspension.
 
 Until then, call the product a **secure pre-launch pilot** and keep all real-money features disabled.
+
+Use [docs/pilot-test-plan.md](./docs/pilot-test-plan.md) to run and document the closed pilot.
