@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="ReserveFlow">
+  <rect width="64" height="64" rx="16" fill="#143d33"/>
+  <path d="M17 43V29c0-2.2 1.8-4 4-4h5v18H17Zm11 0V18c0-2.2 1.8-4 4-4h5v29H28Zm11 0V24c0-2.2 1.8-4 4-4h1c2.2 0 4 1.8 4 4v19h-9Z" fill="#f8f8f4"/>
+  <path d="M28 18c0-2.2 1.8-4 4-4h5v29h-9V18Z" fill="#e7795d"/>
+</svg>
